@@ -1,0 +1,132 @@
+[
+  {
+    "id": "demo-ravi",
+    "beneficiaryId": "SC-AJAY-2026-1001",
+    "userId": "user-ravi",
+    "name": "Ravi Kumar",
+    "phone": "9848022338",
+    "email": "ravi.kumar@pmajay.gov.in",
+    "category": "Scheduled Caste (SC)",
+    "age": 26,
+    "gender": "Male",
+    "state": "Andhra Pradesh",
+    "district": "Vizianagaram",
+    "areaType": "Rural",
+    "education": "10th Pass",
+    "currentOccupation": "Local Stitching Worker",
+    "existingSkills": [
+      "Basic Tailoring",
+      "Garment Finishing",
+      "Hand Stitching"
+    ],
+    "workExperienceYears": 2,
+    "monthlyIncome": "₹4,000 – ₹7,000",
+    "preferredLivelihood": "Self-employment",
+    "interests": [
+      "Garment Design",
+      "Boutique Setup",
+      "Uniform Stitching"
+    ],
+    "careerGoal": "Establish an independent home tailoring unit with motorized equipment under PM-AJAY GIA",
+    "giaEligibilityStatus": "Eligible for 100% GIA Toolkit Grant",
+    "isBackendSynced": true,
+    "createdAt": "2026-08-30T19:17:06.756Z",
+    "updatedAt": "2026-08-30T19:20:14.432Z"
+  },
+  {
+    "id": "SC-AJAY-2026-1002",
+    "beneficiaryId": "SC-AJAY-2026-1002",
+    "userId": "user-002",
+    "name": "Sunita Devi",
+    "phone": "9848022339",
+    "email": "sunita.devi@pmajay.gov.in",
+    "category": "Scheduled Caste (SC)",
+    "age": 32,
+    "gender": "Female",
+    "state": "Uttar Pradesh",
+    "district": "Varanasi",
+    "areaType": "Rural",
+    "education": "8th Pass",
+    "currentOccupation": "Backyard Poultry & Agricultural Laborer",
+    "existingSkills": [
+      "Backyard Poultry",
+      "Organic Farming",
+      "Shed Management"
+    ],
+    "workExperienceYears": 5,
+    "monthlyIncome": "₹3,000 – ₹5,000",
+    "preferredLivelihood": "Self-employment",
+    "interests": [
+      "Free-range Poultry",
+      "Bio-Composting"
+    ],
+    "careerGoal": "Scale up poultry unit to 200 birds with PM-AJAY livestock shed and chick feed grant.",
+    "giaEligibilityStatus": "Eligible for 100% GIA Toolkit Grant",
+    "isBackendSynced": true,
+    "createdAt": "2026-08-30T19:17:06.758Z"
+  },
+  {
+    "id": "SC-AJAY-2026-1003",
+    "beneficiaryId": "SC-AJAY-2026-1003",
+    "userId": "user-003",
+    "name": "Manish Paswan",
+    "phone": "9848022340",
+    "email": "manish.paswan@pmajay.gov.in",
+    "category": "Scheduled Caste (SC)",
+    "age": 22,
+    "gender": "Male",
+    "state": "Bihar",
+    "district": "Gaya",
+    "areaType": "Semi-Urban",
+    "education": "12th Pass",
+    "currentOccupation": "Apprentice at Local Electronics Stall",
+    "existingSkills": [
+      "House Wiring",
+      "Solar Panel Installation",
+      "Electrical Testing"
+    ],
+    "workExperienceYears": 1,
+    "monthlyIncome": "₹5,000 – ₹8,000",
+    "preferredLivelihood": "Self-employment",
+    "interests": [
+      "Suryamitra Rooftop Solar",
+      "Inverter Servicing"
+    ],
+    "careerGoal": "Become a certified Suryamitra technician and establish a solar installation service kiosk.",
+    "giaEligibilityStatus": "Eligible for 100% GIA Toolkit Grant",
+    "isBackendSynced": true,
+    "createdAt": "2026-08-30T19:17:06.758Z"
+  },
+  {
+    "id": "SC-AJAY-2026-1004",
+    "beneficiaryId": "SC-AJAY-2026-1004",
+    "userId": "user-004",
+    "name": "Pooja Rani",
+    "phone": "9848022341",
+    "email": "pooja.rani@pmajay.gov.in",
+    "category": "Scheduled Caste (SC)",
+    "age": 24,
+    "gender": "Female",
+    "state": "Punjab",
+    "district": "Jalandhar",
+    "areaType": "Urban",
+    "education": "12th Pass",
+    "currentOccupation": "Assistant at Local Health Clinic",
+    "existingSkills": [
+      "Patient Care",
+      "Vital Signs Monitoring",
+      "First Aid"
+    ],
+    "workExperienceYears": 1,
+    "monthlyIncome": "₹6,000 – ₹9,000",
+    "preferredLivelihood": "Job",
+    "interests": [
+      "Hospital Nursing Support",
+      "Elder Care"
+    ],
+    "careerGoal": "Secure a certified General Duty Assistant (GDA) job in a district hospital.",
+    "giaEligibilityStatus": "Eligible for 100% GIA Skilling Allowance",
+    "isBackendSynced": true,
+    "createdAt": "2026-08-30T19:17:06.758Z"
+  }
+]

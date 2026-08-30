@@ -2,13 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import { AdminAnalyticsData } from '@/lib/types';
-import { BarChart3, Users, Landmark, GraduationCap, TrendingUp, AlertTriangle, MapPin, Search, Download, Filter, ShieldCheck, Sparkles, IndianRupee } from 'lucide-react';
+import { BarChart3, Users, Landmark, GraduationCap, TrendingUp, AlertTriangle, MapPin, Search, Download, Filter, ShieldCheck, Sparkles, IndianRupee, Lock, Eye, EyeOff, LogOut, KeyRound, CheckCircle2 } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [officerName, setOfficerName] = useState('Dr. V. Sharma (Central Nodal Officer)');
+
   const [data, setData] = useState<AdminAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDistrict, setSelectedDistrict] = useState('All');
   const [selectedEducation, setSelectedEducation] = useState('All');
+
+  // Check persistent session in sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedAuth = sessionStorage.getItem('saksham_admin_session');
+      if (savedAuth === 'true') {
+        setIsAuthenticated(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     fetch('/api/admin-stats')
@@ -21,6 +38,158 @@ export default function AdminDashboard() {
       .catch((err) => console.error('Failed to load admin stats:', err))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+
+    const validUsers = [
+      { user: 'admin', pass: 'admin123', name: 'Dr. V. Sharma (Ministry Nodal Director)' },
+      { user: 'pmajay_officer', pass: 'pmajay2026', name: 'Smt. Ananya Sen (GIA Program Officer)' },
+      { user: 'nodal_ap', pass: 'sih2026', name: 'Shri R. Prabhakar (AP State District Officer)' }
+    ];
+
+    const match = validUsers.find(
+      (u) => u.user.toLowerCase() === username.trim().toLowerCase() && u.pass === password
+    );
+
+    if (match) {
+      setIsAuthenticated(true);
+      setOfficerName(match.name);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('saksham_admin_session', 'true');
+        sessionStorage.setItem('saksham_admin_officer', match.name);
+      }
+    } else {
+      setAuthError('Invalid Officer Username or Password. Please verify credentials or use Quick Demo Access below.');
+    }
+  };
+
+  const handleQuickDemoLogin = () => {
+    setUsername('admin');
+    setPassword('admin123');
+    setIsAuthenticated(true);
+    setOfficerName('Dr. V. Sharma (Ministry Nodal Director)');
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('saksham_admin_session', 'true');
+      sessionStorage.setItem('saksham_admin_officer', 'Dr. V. Sharma (Ministry Nodal Director)');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUsername('');
+    setPassword('');
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('saksham_admin_session');
+      sessionStorage.removeItem('saksham_admin_officer');
+    }
+  };
+
+  // If not authenticated, render official Ministry Login Screen
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full mx-auto max-w-md px-4 py-12">
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/95 p-8 shadow-2xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 text-slate-950 font-bold shadow-lg shadow-amber-500/20">
+              <Landmark size={32} />
+            </div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400 border border-amber-500/20 mt-2">
+              <ShieldCheck size={13} />
+              <span>Restricted Access Portal</span>
+            </div>
+            <h2 className="text-2xl font-bold font-serif text-slate-100">
+              Admin & Officer Login
+            </h2>
+            <p className="text-xs text-slate-400">
+              Ministry of Social Justice & Empowerment · PM-AJAY GIA Central Monitoring System
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4 pt-2">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Officer Username / ID
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. admin or pmajay_officer"
+                className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-500 font-medium"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Officer Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter secure officer password"
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 pr-10 text-sm text-slate-100 outline-none focus:border-amber-500"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-200"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {authError && (
+              <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 p-3 text-xs text-rose-300 font-medium">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold py-3.5 text-sm transition-all shadow-lg shadow-amber-500/20"
+            >
+              <Lock size={16} />
+              <span>Login to Monitoring Dashboard</span>
+            </button>
+          </form>
+
+          {/* Quick Demo Login Preset for Hackathon Judges */}
+          <div className="rounded-2xl bg-slate-950 p-4 border border-slate-800/80 space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                <KeyRound size={13} /> Demo Evaluation Credentials:
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">Pre-Configured</span>
+            </div>
+            <div className="text-[11px] text-slate-400 space-y-1 font-mono bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+              <p>Username: <strong className="text-slate-200">admin</strong></p>
+              <p>Password: <strong className="text-slate-200">admin123</strong></p>
+            </div>
+            <button
+              type="button"
+              onClick={handleQuickDemoLogin}
+              className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+            >
+              <Sparkles size={13} />
+              <span>⚡ 1-Click Quick Demo Login</span>
+            </button>
+          </div>
+
+          <div className="text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+            <ShieldCheck size={14} className="text-emerald-400" />
+            <span>NIC SSL 256-Bit Authenticated Gateway</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !data) {
     return (
@@ -35,7 +204,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="w-full mx-auto max-w-7xl px-4 py-8 space-y-8">
-      {/* Header */}
+      {/* Header with Officer Profile & Signout */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400 border border-amber-500/20">
@@ -46,17 +215,27 @@ export default function AdminDashboard() {
             PM-AJAY GIA Programme Analytics
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Real-time insights into SC community skilling gaps, district demands, and GIA grant allocation.
+            Logged in as: <strong className="text-emerald-400">{officerName}</strong>
           </p>
         </div>
 
-        <button
-          onClick={() => alert('Exporting PM-AJAY GIA District Monitoring Report (PDF/Excel)...')}
-          className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-5 py-2.5 text-xs font-bold transition-all shadow-md"
-        >
-          <Download size={15} />
-          <span>Export Official Report</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => alert('Exporting PM-AJAY GIA District Monitoring Report (PDF/Excel)...')}
+            className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 text-xs font-bold transition-all shadow-md"
+          >
+            <Download size={15} />
+            <span>Export Official Report</span>
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-950/20 hover:bg-rose-950/40 text-rose-300 px-4 py-2.5 text-xs font-bold transition-all"
+          >
+            <LogOut size={14} />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Metric Cards */}

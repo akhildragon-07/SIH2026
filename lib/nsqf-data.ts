@@ -1,7 +1,7 @@
 import { NSQFCourse } from './types';
 
 export const NSQF_COURSES_DATASET: NSQFCourse[] = [
-  // APPAREL & GARMENTS
+  // 1. APPAREL & GARMENTS
   {
     id: 'nsqf-app-01',
     title: 'Self-Employed Tailor',
@@ -12,8 +12,8 @@ export const NSQF_COURSES_DATASET: NSQFCourse[] = [
     durationText: '3 Months (300 hrs)',
     eligibility: '8th Pass with basic stitching orientation',
     minEducation: '8th Pass',
-    skillsTaught: ['Pattern Making', 'Garment Construction', 'Costing & Pricing', 'Machine Maintenance', 'Customer Relations'],
-    careerRoles: ['Boutique Owner', 'Independent Tailor', 'Custom Garment Maker'],
+    skillsTaught: ['Pattern Making', 'Garment Construction', 'Costing & Pricing', 'Machine Maintenance', 'Customer Relations', 'Fabric Cutting', 'Boutique Management'],
+    careerRoles: ['Boutique Owner', 'Independent Tailor', 'Custom Garment Maker', 'Alteration Specialist'],
     description: 'Specialized course for individuals aiming to set up an independent tailoring enterprise or boutique, covering measurement taking, fabric cutting, stitching, and business management.',
     certifyingBody: 'Apparel Made-Ups & Home Furnishing Sector Skill Council (AMHSSC)',
     officialCourseUrl: 'https://nqr.gov.in/qualification-packs/self-employed-tailor-1',
@@ -31,8 +31,8 @@ export const NSQF_COURSES_DATASET: NSQFCourse[] = [
     durationText: '2.5 Months (240 hrs)',
     eligibility: '5th Pass / Basic Literacy',
     minEducation: 'Below 8th',
-    skillsTaught: ['Single/Double Needle Machine Operation', 'Stitching Techniques', 'Quality Check', 'Safety Standards'],
-    careerRoles: ['Garment Factory Sewing Operator', 'Assembly Line Worker'],
+    skillsTaught: ['Single/Double Needle Machine Operation', 'Stitching Techniques', 'Quality Check', 'Safety Standards', 'Garment Assembly'],
+    careerRoles: ['Garment Factory Sewing Operator', 'Assembly Line Worker', 'Export Unit Stitcher'],
     description: 'Hands-on training for operating single and double needle lockstitch sewing machines in garment export houses and factories.',
     certifyingBody: 'AMHSSC / National Skill Development Corporation (NSDC)',
     officialCourseUrl: 'https://nqr.gov.in/qualification-packs/sewing-machine-operator-0',
@@ -41,7 +41,87 @@ export const NSQF_COURSES_DATASET: NSQFCourse[] = [
     isVerifiedGovernmentData: true
   },
 
-  // NIELIT DIGITAL & IT COURSES
+  // 2. POWER, ELECTRICAL & RENEWABLE ENERGY
+  {
+    id: 'nsqf-elec-01',
+    title: 'Solar Panel Installation Technician (Suryamitra)',
+    qpCode: 'ELE/Q5901',
+    nsqfLevel: 4,
+    sector: 'Renewable Energy & Power',
+    durationHours: 300,
+    durationText: '3 Months (300 hrs)',
+    eligibility: '10th Pass or ITI in Electrical/Wireman',
+    minEducation: '10th Pass',
+    skillsTaught: ['PV Panel Mounting', 'Inverter Wiring', 'Rooftop Structural Rigging', 'System Testing & Maintenance', 'Electrical Safety', 'Battery Management'],
+    careerRoles: ['Solar Installer', 'Rooftop Solar Technician', 'Clean Energy Micro-Entrepreneur', 'Solar Maintenance Lead'],
+    description: 'Government aligned Suryamitra training for rooftop and agricultural solar panel deployment and maintenance under PM-Surya Ghar.',
+    certifyingBody: 'Skill Council for Green Jobs (SCGJ)',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/solar-pv-installer-suryamitra',
+    source: 'NQR Green Jobs Portal',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
+  {
+    id: 'nsqf-elec-02',
+    title: 'Assistant Electrician',
+    qpCode: 'CON/Q0602',
+    nsqfLevel: 3,
+    sector: 'Power & Electrical Services',
+    durationHours: 350,
+    durationText: '3.5 Months (350 hrs)',
+    eligibility: '8th Pass or 10th Pass',
+    minEducation: '8th Pass',
+    skillsTaught: ['House Wiring', 'Conduit Pipe Fitting', 'Switchboard Assembly', 'Earthing & Fuse Replacement', 'Electrical Tools Operation', 'Safety Protocols'],
+    careerRoles: ['Domestic Electrician', 'Maintenance Electrician', 'Substation Helper'],
+    description: 'Practical training for domestic and commercial electrical wiring, distribution board fitting, and troubleshooting.',
+    certifyingBody: 'Power Sector Skill Council (PSSC) / CSDCI',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/assistant-electrician-0',
+    source: 'National Qualifications Register (NQR)',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
+
+  // 3. ELECTRONICS & HARDWARE
+  {
+    id: 'nsqf-elec-03',
+    title: 'Mobile Phone Hardware Repair Technician',
+    qpCode: 'ELE/Q8104',
+    nsqfLevel: 4,
+    sector: 'Electronics & Hardware',
+    durationHours: 300,
+    durationText: '3 Months (300 hrs)',
+    eligibility: '10th Pass',
+    minEducation: '10th Pass',
+    skillsTaught: ['SMD Soldering', 'PCB Circuit Diagnostics', 'Display & Battery Replacement', 'Software Flashing', 'Shop Management', 'Multimeter Testing'],
+    careerRoles: ['Mobile Repair Specialist', 'Mobile Repair Shop Proprietor', 'Service Center Technician'],
+    description: 'Comprehensive hardware and software repair training for mobile devices, enabling self-employment.',
+    certifyingBody: 'Electronics Sector Skills Council of India (ESSCI)',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/mobile-phone-hardware-repair-technician',
+    source: 'ESSCI / NQR Registry',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
+
+  // 4. IT-ITeS & DIGITAL SKILLS
+  {
+    id: 'nsqf-it-01',
+    title: 'Domestic Data Entry Operator (DEO)',
+    qpCode: 'SSC/Q2212',
+    nsqfLevel: 4,
+    sector: 'IT-ITeS & Digital',
+    durationHours: 400,
+    durationText: '4 Months (400 hrs)',
+    eligibility: '10th Pass with basic English typing',
+    minEducation: '10th Pass',
+    skillsTaught: ['Alphanumeric Data Typing (35+ wpm)', 'MS Office & Google Workspace', 'Data Verification', 'Cyber Hygiene', 'Office Communication', 'Spreadsheet Formulas'],
+    careerRoles: ['Data Entry Operator', 'Office Assistant', 'Common Service Centre (CSC) Operator', 'Billing Clerk'],
+    description: 'Prepares beneficiaries for administrative desk roles in government departments, banks, and private firms.',
+    certifyingBody: 'IT-ITeS Sector Skills Council NASSCOM',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/domestic-data-entry-operator-1',
+    source: 'NASSCOM / NQR Official Portal',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
   {
     id: 'nsqf-nielit-01',
     title: 'NIELIT Certificate Course in Computer Concepts (CCC)',
@@ -52,8 +132,8 @@ export const NSQF_COURSES_DATASET: NSQFCourse[] = [
     durationText: '1 Month (80 hrs)',
     eligibility: 'No Minimum Education / Basic Literacy',
     minEducation: 'Below 8th',
-    skillsTaught: ['Computer Basics', 'MS Office & Word', 'Spreadsheets & Excel', 'Internet & E-Governance', 'Digital Financial Services'],
-    careerRoles: ['Office Assistant', 'Digital Helper', 'CSC Operator'],
+    skillsTaught: ['Computer Basics', 'MS Office & Word', 'Spreadsheets & Excel', 'Internet & E-Governance', 'Digital Financial Services', 'Online Banking & UPI'],
+    careerRoles: ['Office Assistant', 'Digital Helper', 'CSC Operator', 'Village Level Entrepreneur'],
     description: 'Official NIELIT NSQF Level 3 certified course designed to impart basic digital literacy and enable rural SC beneficiaries to utilize e-governance and online portals.',
     certifyingBody: 'National Institute of Electronics & Information Technology (NIELIT)',
     officialCourseUrl: 'https://www.nielit.in/content/nsqf',
@@ -71,8 +151,8 @@ export const NSQF_COURSES_DATASET: NSQFCourse[] = [
     durationText: '1 Year / 6 Months intensive (520 hrs)',
     eligibility: '12th Pass or ITI Certificate',
     minEducation: '12th Pass',
-    skillsTaught: ['Python Programming', 'Web Design (HTML/CSS/JS)', 'IoT & Embedded Systems', 'Database Management'],
-    careerRoles: ['Junior Programmer', 'Web Designer', 'IT Support Technician'],
+    skillsTaught: ['Python Programming', 'Web Design (HTML/CSS/JS)', 'IoT & Embedded Systems', 'Database Management', 'Git Version Control'],
+    careerRoles: ['Junior Programmer', 'Web Designer', 'IT Support Technician', 'Database Operator'],
     description: 'Government recognised NIELIT O Level qualification equivalent to Foundation Level course in Computer Applications.',
     certifyingBody: 'NIELIT / Ministry of Electronics & IT (MeitY)',
     officialCourseUrl: 'https://www.nielit.in/content/nsqf',
@@ -81,110 +161,7 @@ export const NSQF_COURSES_DATASET: NSQFCourse[] = [
     isVerifiedGovernmentData: true
   },
 
-  // ELECTRONICS & RENEWABLE ENERGY
-  {
-    id: 'nsqf-elec-01',
-    title: 'Solar Panel Installation Technician (Suryamitra)',
-    qpCode: 'ELE/Q5901',
-    nsqfLevel: 4,
-    sector: 'Renewable Energy & Electronics',
-    durationHours: 300,
-    durationText: '3 Months (300 hrs)',
-    eligibility: '10th Pass or ITI in Electrical/Wireman',
-    minEducation: '10th Pass',
-    skillsTaught: ['PV Panel Mounting', 'Inverter Wiring', 'Rooftop Structural Rigging', 'System Testing & Maintenance', 'Electrical Safety'],
-    careerRoles: ['Solar Installer', 'Rooftop Solar Technician', 'Clean Energy Micro-Entrepreneur'],
-    description: 'Government aligned Suryamitra training for rooftop and agricultural solar panel deployment and maintenance under PM-Surya Ghar.',
-    certifyingBody: 'Skill Council for Green Jobs (SCGJ)',
-    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/solar-pv-installer-suryamitra',
-    source: 'NQR Green Jobs Portal',
-    verificationStatus: 'VERIFIED_OFFICIAL',
-    isVerifiedGovernmentData: true
-  },
-  {
-    id: 'nsqf-elec-03',
-    title: 'Mobile Phone Hardware Repair Technician',
-    qpCode: 'ELE/Q8104',
-    nsqfLevel: 4,
-    sector: 'Electronics',
-    durationHours: 300,
-    durationText: '3 Months (300 hrs)',
-    eligibility: '10th Pass',
-    minEducation: '10th Pass',
-    skillsTaught: ['SMD Soldering', 'PCB Circuit Diagnostics', 'Display & Battery Replacement', 'Software Flashing', 'Shop Management'],
-    careerRoles: ['Mobile Repair Specialist', 'Mobile Repair Shop Proprietor'],
-    description: 'Comprehensive hardware and software repair training for mobile devices, enabling self-employment.',
-    certifyingBody: 'Electronics Sector Skills Council of India (ESSCI)',
-    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/mobile-phone-hardware-repair-technician',
-    source: 'ESSCI / NQR Registry',
-    verificationStatus: 'VERIFIED_OFFICIAL',
-    isVerifiedGovernmentData: true
-  },
-
-  // IT & DIGITAL SKILLS
-  {
-    id: 'nsqf-it-01',
-    title: 'Domestic Data Entry Operator',
-    qpCode: 'SSC/Q2212',
-    nsqfLevel: 4,
-    sector: 'IT-ITeS & Digital',
-    durationHours: 400,
-    durationText: '4 Months (400 hrs)',
-    eligibility: '10th Pass with basic English typing',
-    minEducation: '10th Pass',
-    skillsTaught: ['Alphanumeric Data Typing (35+ wpm)', 'MS Office & Google Workspace', 'Data Verification', 'Cyber Hygiene', 'Office Communication'],
-    careerRoles: ['Data Entry Operator', 'Office Assistant', 'Common Service Centre (CSC) Operator'],
-    description: 'Prepares beneficiaries for administrative desk roles in government departments, banks, and private firms.',
-    certifyingBody: 'IT-ITeS Sector Skills Council NASSCOM',
-    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/domestic-data-entry-operator-1',
-    source: 'NASSCOM / NQR Official Portal',
-    verificationStatus: 'VERIFIED_OFFICIAL',
-    isVerifiedGovernmentData: true
-  },
-
-  // AGRICULTURE & ALLIED
-  {
-    id: 'nsqf-agro-01',
-    title: 'Organic Grower',
-    qpCode: 'AGR/Q0801',
-    nsqfLevel: 4,
-    sector: 'Agriculture & Allied',
-    durationHours: 200,
-    durationText: '2 Months (200 hrs)',
-    eligibility: '5th Pass / Farmer background preferred',
-    minEducation: 'Below 8th',
-    skillsTaught: ['Vermi-composting', 'Organic Bio-Pesticides (Jeevamrut)', 'Crop Rotation', 'Organic Certification Process', 'Direct Market Linkage'],
-    careerRoles: ['Organic Farmer', 'Bio-Input Producer', 'FPO Lead Farmer'],
-    description: 'Teaches low-cost sustainable organic farming techniques to maximize agricultural yields and market value.',
-    certifyingBody: 'Agriculture Skill Council of India (ASCI)',
-    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/organic-grower-0',
-    source: 'ASCI / NQR Official Registry',
-    verificationStatus: 'VERIFIED_OFFICIAL',
-    isVerifiedGovernmentData: true
-  },
-
-  // BEAUTY & WELLNESS
-  {
-    id: 'nsqf-bw-02',
-    title: 'Beauty Therapist & Salon Manager',
-    qpCode: 'BWC/Q0202',
-    nsqfLevel: 4,
-    sector: 'Beauty & Wellness',
-    durationHours: 350,
-    durationText: '3.5 Months (350 hrs)',
-    eligibility: '10th Pass',
-    minEducation: '10th Pass',
-    skillsTaught: ['Advanced Facial Treatments', 'Bridal Makeup', 'Hair Styling', 'Salon Setup & Financial Management'],
-    careerRoles: ['Senior Beauty Therapist', 'Home Parlour Owner', 'Salon Franchise Operator'],
-    description: 'Advanced entrepreneurial course enabling setup of home-based or commercial beauty parlours with PM-AJAY GIA toolkit support.',
-    certifyingBody: 'Beauty & Wellness Sector Skill Council (B&WSSC)',
-    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/beauty-therapist-0',
-    source: 'B&WSSC / NQR Registry',
-    verificationStatus: 'VERIFIED_OFFICIAL',
-    isVerifiedGovernmentData: true
-  },
-
-  // HEALTHCARE & ALLIED
+  // 5. HEALTHCARE & ALLIED
   {
     id: 'nsqf-health-01',
     title: 'General Duty Assistant (GDA)',
@@ -195,13 +172,138 @@ export const NSQF_COURSES_DATASET: NSQFCourse[] = [
     durationText: '4 Months (400 hrs)',
     eligibility: '10th Pass',
     minEducation: '10th Pass',
-    skillsTaught: ['Patient Care & Hygiene', 'Vital Signs Monitoring', 'Infection Control', 'Basic First Aid', 'Hospital Ward Protocol'],
-    careerRoles: ['Hospital Attendant', 'Nursing Home Assistant', 'Home Healthcare Attendant'],
+    skillsTaught: ['Patient Care & Hygiene', 'Vital Signs Monitoring', 'Infection Control', 'Basic First Aid', 'Hospital Ward Protocol', 'Bedside Assistance'],
+    careerRoles: ['Hospital Attendant', 'Nursing Home Assistant', 'Home Healthcare Attendant', 'Clinic Assistant'],
     description: 'High-demand healthcare support course placing workers in private hospitals, clinics, and eldercare facilities.',
     certifyingBody: 'Healthcare Sector Skill Council (HSSC)',
     officialCourseUrl: 'https://nqr.gov.in/qualification-packs/general-duty-assistant-0',
     source: 'HSSC / NQR Official Portal',
     verificationStatus: 'VERIFIED_OFFICIAL',
     isVerifiedGovernmentData: true
+  },
+
+  // 6. AGRICULTURE & LIVESTOCK
+  {
+    id: 'nsqf-agro-01',
+    title: 'Organic Grower',
+    qpCode: 'AGR/Q0801',
+    nsqfLevel: 4,
+    sector: 'Agriculture & Allied',
+    durationHours: 200,
+    durationText: '2 Months (200 hrs)',
+    eligibility: '5th Pass / Farmer background preferred',
+    minEducation: 'Below 8th',
+    skillsTaught: ['Vermi-composting', 'Organic Bio-Pesticides (Jeevamrut)', 'Crop Rotation', 'Organic Certification Process', 'Direct Market Linkage', 'Soil Health Management'],
+    careerRoles: ['Organic Farmer', 'Bio-Input Producer', 'FPO Lead Farmer', 'Agri-Business Advisor'],
+    description: 'Teaches low-cost sustainable organic farming techniques to maximize agricultural yields and market value.',
+    certifyingBody: 'Agriculture Skill Council of India (ASCI)',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/organic-grower-0',
+    source: 'ASCI / NQR Official Registry',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
+  {
+    id: 'nsqf-agro-02',
+    title: 'Small Poultry Farmer',
+    qpCode: 'AGR/Q4301',
+    nsqfLevel: 4,
+    sector: 'Agriculture & Allied',
+    durationHours: 200,
+    durationText: '2 Months (200 hrs)',
+    eligibility: '5th Pass / Basic Literacy',
+    minEducation: 'Below 8th',
+    skillsTaught: ['Backyard Poultry Housing', 'Chick Brooding & Feeding', 'Vaccination Schedule', 'Egg Collection & Storage', 'Poultry Disease Prevention'],
+    careerRoles: ['Poultry Farm Owner', 'Hatchery Supervisor', 'Poultry Collective Manager'],
+    description: 'Skill course designed for rural beneficiaries to establish high-income backyard poultry units with PM-AJAY GIA livestock grants.',
+    certifyingBody: 'Agriculture Skill Council of India (ASCI)',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/small-poultry-farmer-0',
+    source: 'ASCI / NQR Registry',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
+
+  // 7. AUTOMOTIVE & VEHICLE REPAIR
+  {
+    id: 'nsqf-auto-01',
+    title: 'Automotive Service Technician (Two & Three Wheelers)',
+    qpCode: 'ASC/Q1411',
+    nsqfLevel: 4,
+    sector: 'Automotive & Mechanical',
+    durationHours: 400,
+    durationText: '4 Months (400 hrs)',
+    eligibility: '10th Pass or 8th Pass with ITI',
+    minEducation: '8th Pass',
+    skillsTaught: ['Engine Overhauling', 'Brake & Clutch Servicing', 'Fuel Injection Systems', 'Electrical Diagnostics', 'Workshop Safety', 'EV Motor Basics'],
+    careerRoles: ['Two-Wheeler Mechanic', 'Garage Workshop Owner', 'Dealership Service Tech'],
+    description: 'Comprehensive mechanics course qualifying candidates for jobs in brand service centers or setting up self-employment repair garages.',
+    certifyingBody: 'Automotive Skills Development Council (ASDC)',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/automotive-service-technician-two-and-three-wheelers-0',
+    source: 'ASDC / NQR Registry',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
+
+  // 8. BEAUTY & WELLNESS
+  {
+    id: 'nsqf-bw-02',
+    title: 'Beauty Therapist & Salon Manager',
+    qpCode: 'BWC/Q0202',
+    nsqfLevel: 4,
+    sector: 'Beauty & Wellness',
+    durationHours: 350,
+    durationText: '3.5 Months (350 hrs)',
+    eligibility: '10th Pass',
+    minEducation: '10th Pass',
+    skillsTaught: ['Advanced Facial Treatments', 'Bridal Makeup', 'Hair Styling & Cut', 'Salon Setup & Financial Management', 'Client Hygiene'],
+    careerRoles: ['Senior Beauty Therapist', 'Home Parlour Owner', 'Salon Franchise Operator', 'Bridal Makeup Artist'],
+    description: 'Advanced entrepreneurial course enabling setup of home-based or commercial beauty parlours with PM-AJAY GIA toolkit support.',
+    certifyingBody: 'Beauty & Wellness Sector Skill Council (B&WSSC)',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/beauty-therapist-0',
+    source: 'B&WSSC / NQR Registry',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
+
+  // 9. PLUMBING & CONSTRUCTION
+  {
+    id: 'nsqf-plumb-01',
+    title: 'Plumber General',
+    qpCode: 'PSC/Q0104',
+    nsqfLevel: 4,
+    sector: 'Plumbing & Water Sanitation',
+    durationHours: 350,
+    durationText: '3.5 Months (350 hrs)',
+    eligibility: '8th Pass',
+    minEducation: '8th Pass',
+    skillsTaught: ['PVC/GI Pipe Jointing', 'Sanitary Fixture Installation', 'Drainage System Laying', 'Leak Detection & Repair', 'Water Pump Connection'],
+    careerRoles: ['Independent Plumber', 'Contractor Assistant', 'Building Maintenance Plumber'],
+    description: 'High-demand trade skilling under Jal Jeevan Mission and urban development programs, equipping plumbers for direct market contracts.',
+    certifyingBody: 'Indian Plumbing Skills Council (IPSC)',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/plumber-general-0',
+    source: 'IPSC / NQR Registry',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
+  },
+
+  // 10. RETAIL & LOGISTICS
+  {
+    id: 'nsqf-ret-01',
+    title: 'Retail Sales Associate',
+    qpCode: 'RAS/Q0104',
+    nsqfLevel: 4,
+    sector: 'Retail & Commercial Services',
+    durationHours: 280,
+    durationText: '2.5 Months (280 hrs)',
+    eligibility: '10th Pass',
+    minEducation: '10th Pass',
+    skillsTaught: ['Customer Service & Communication', 'Point of Sale (POS) Billing', 'Product Merchandising', 'Inventory Handling', 'Digital Payments'],
+    careerRoles: ['Retail Store Executive', 'Showroom Sales Lead', 'Counter Salesman'],
+    description: 'Skill training for retail chains, supermarkets, and electronics showrooms with customer relationship management.',
+    certifyingBody: 'Retailers Association\'s Skill Council of India (RASCI)',
+    officialCourseUrl: 'https://nqr.gov.in/qualification-packs/retail-sales-associate',
+    source: 'RASCI / NQR Registry',
+    verificationStatus: 'VERIFIED_OFFICIAL',
+    isVerifiedGovernmentData: true
   }
 ];
+

@@ -14,8 +14,13 @@ export type LivelihoodType =
 
 export interface BeneficiaryProfile {
   id?: string;
+  beneficiaryId?: string; // e.g. "SC-AJAY-2026-8492"
   userId?: string;
   name: string;
+  phone?: string;
+  email?: string;
+  aadhaarLast4?: string;
+  category?: 'Scheduled Caste (SC)' | 'General / Other';
   age: number;
   gender: 'Male' | 'Female' | 'Other';
   state: string;
@@ -32,6 +37,10 @@ export interface BeneficiaryProfile {
   preferredLanguage?: string;
   savedCourseIds?: string[];
   profileCompletionPercentage?: number;
+  isBackendSynced?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  giaEligibilityStatus?: 'Eligible for 100% GIA Toolkit Grant' | 'Under Verification';
 }
 
 export interface NSQFCourse {
@@ -53,6 +62,8 @@ export interface NSQFCourse {
   verificationStatus: 'VERIFIED_OFFICIAL' | 'DEMO_SYNTHETIC';
   matchScore?: number;
   rationale?: string;
+  matchingSkills?: string[];
+  missingSkills?: string[];
   isVerifiedGovernmentData: boolean;
 }
 
@@ -63,6 +74,7 @@ export interface LivelihoodOpportunity {
   sector: string;
   location: string;
   requiredSkills: string[];
+  matchingSkills?: string[];
   incomeRange: string;
   giaSupport?: string;
   financialAssistance?: string;
@@ -120,7 +132,10 @@ export interface ChatMessage {
 
 export interface UserAuth {
   userId: string;
+  beneficiaryId?: string;
   email: string;
+  phone?: string;
   name: string;
   token?: string;
+  isAuthenticated: boolean;
 }

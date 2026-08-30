@@ -10,6 +10,7 @@ import TextOnboardingBot from '@/components/TextOnboardingBot';
 import BeneficiaryOnboarding from '@/components/BeneficiaryOnboarding';
 import ProfileConfirmation from '@/components/ProfileConfirmation';
 import BeneficiaryDashboard from '@/components/BeneficiaryDashboard';
+import BeneficiaryAccountCard from '@/components/BeneficiaryAccountCard';
 import SkillGapAnalysis from '@/components/SkillGapAnalysis';
 import NSQFRecommendations from '@/components/NSQFRecommendations';
 import LivelihoodRecommendations from '@/components/LivelihoodRecommendations';
@@ -17,13 +18,12 @@ import CareerRoadmap from '@/components/CareerRoadmap';
 import AdminDashboard from '@/components/AdminDashboard';
 
 import { BeneficiaryProfile, AnalysisResponse } from '@/lib/types';
-import { DEMO_BENEFICIARIES } from '@/lib/demo-data';
-import { Landmark, Mic, UserCheck, GraduationCap, Briefcase, BarChart3, Sparkles, LayoutDashboard, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Landmark, Mic, UserCheck, GraduationCap, Briefcase, BarChart3, Sparkles, LayoutDashboard, ShieldCheck, CheckCircle2, CreditCard, ChevronDown } from 'lucide-react';
 
-type ViewMode = 'landing' | 'onboard-choice' | 'voice' | 'text' | 'manual' | 'confirm' | 'dashboard' | 'results' | 'admin';
+type ViewMode = 'landing' | 'onboard-choice' | 'voice' | 'text' | 'manual' | 'confirm' | 'card' | 'dashboard' | 'results' | 'admin';
 
 function MainAppContent() {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, registeredBeneficiaries, switchBeneficiary } = useAuth();
   const [currentView, setCurrentView] = useState<ViewMode>('landing');
   const [activeDemoId, setActiveDemoId] = useState<string | undefined>('demo-ravi');
 
@@ -32,6 +32,7 @@ function MainAppContent() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [activeResultsTab, setActiveResultsTab] = useState<'nsqf' | 'livelihood' | 'roadmap' | 'gap'>('nsqf');
+  const [showAccountDropdown, setShowAccountDropdown] = useState<boolean>(false);
 
   const fetchAnalysis = async (profileToAnalyze: BeneficiaryProfile) => {
     setIsAnalyzing(true);
@@ -54,7 +55,7 @@ function MainAppContent() {
 
   useEffect(() => {
     fetchAnalysis(profile);
-  }, []);
+  }, [profile]);
 
   // Demo selector handler
   const handleSelectDemoProfile = (demoProf: BeneficiaryProfile) => {
@@ -70,7 +71,7 @@ function MainAppContent() {
     const fullPending: BeneficiaryProfile = {
       ...profile,
       ...extracted,
-      name: extracted.name || profile.name || 'Ravi',
+      name: extracted.name || profile.name || 'Ravi Kumar',
       education: extracted.education || profile.education || '10th Pass',
       existingSkills: extracted.existingSkills && extracted.existingSkills.length > 0 ? extracted.existingSkills : ['Tailoring', 'Sewing', 'Stitching']
     };
@@ -82,7 +83,7 @@ function MainAppContent() {
   const handleConfirmProfile = () => {
     updateProfile(pendingProfile);
     fetchAnalysis(pendingProfile);
-    setCurrentView('results');
+    setCurrentView('card');
   };
 
   return (
@@ -136,7 +137,17 @@ function MainAppContent() {
               }`}
             >
               <UserCheck size={14} />
-              <span>Create Profile</span>
+              <span>Register Account</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentView('card')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all ${
+                currentView === 'card' ? 'bg-slate-800 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <CreditCard size={14} />
+              <span>My PM-AJAY Card</span>
             </button>
 
             <button
@@ -170,14 +181,69 @@ function MainAppContent() {
             </button>
           </nav>
 
-          {/* Action Button */}
+          {/* Account Switcher / Action Button */}
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+                className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-slate-700"
+              >
+                <span className="size-2 rounded-full bg-emerald-400" />
+                <span className="max-w-[100px] truncate">{profile.name}</span>
+                <ChevronDown size={12} className="text-slate-400" />
+              </button>
+
+              {showAccountDropdown && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-2xl z-50">
+                  <div className="p-2 border-b border-slate-800 mb-1">
+                    <p className="text-xs font-bold text-slate-200">{profile.name}</p>
+                    <p className="text-[11px] font-mono text-emerald-400">{profile.beneficiaryId || 'SC-AJAY-2026-1001'}</p>
+                    <p className="text-[10px] text-slate-400">{profile.district}, {profile.state}</p>
+                  </div>
+
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">
+                    Saved Backend Accounts ({(registeredBeneficiaries || []).length}):
+                  </p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {(registeredBeneficiaries || []).map((b) => (
+                      <button
+                        key={b.id || b.beneficiaryId}
+                        onClick={() => {
+                          switchBeneficiary(b.beneficiaryId || b.id);
+                          setShowAccountDropdown(false);
+                          setCurrentView('card');
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
+                          b.beneficiaryId === profile.beneficiaryId ? 'bg-emerald-500/10 text-emerald-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="truncate">{b.name}</span>
+                        <span className="text-[10px] font-mono text-slate-400">{b.beneficiaryId?.slice(-4)}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-800 mt-2">
+                    <button
+                      onClick={() => {
+                        setShowAccountDropdown(false);
+                        setCurrentView('manual');
+                      }}
+                      className="w-full text-center py-2 text-xs font-bold text-emerald-400 hover:text-emerald-300"
+                    >
+                      + Create New Account
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
-              onClick={() => setCurrentView('onboard-choice')}
-              className="flex items-center gap-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2 text-xs font-bold transition-all shadow-md"
+              onClick={() => setCurrentView('voice')}
+              className="flex items-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3.5 py-2 text-xs font-bold transition-all shadow-md"
             >
               <Mic size={14} />
-              <span>Get Started</span>
+              <span>Voice</span>
             </button>
           </div>
         </div>
@@ -189,7 +255,7 @@ function MainAppContent() {
           <LandingPage
             onStartVoice={() => setCurrentView('voice')}
             onOpenAdmin={() => setCurrentView('admin')}
-            onOpenForm={() => setCurrentView('onboard-choice')}
+            onOpenForm={() => setCurrentView('manual')}
             onLoadDemo={handleSelectDemoProfile}
           />
         )}
@@ -236,6 +302,16 @@ function MainAppContent() {
           />
         )}
 
+        {currentView === 'card' && (
+          <div className="w-full mx-auto max-w-5xl px-4 py-8 space-y-6">
+            <BeneficiaryAccountCard
+              profile={profile}
+              onEditProfile={() => setCurrentView('manual')}
+              onViewRecommendations={() => setCurrentView('results')}
+            />
+          </div>
+        )}
+
         {currentView === 'dashboard' && (
           <BeneficiaryDashboard
             onEditProfile={() => setCurrentView('manual')}
@@ -255,6 +331,7 @@ function MainAppContent() {
                   Livelihood & Skilling Plan for {profile.name}
                 </h1>
                 <p className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-3">
+                  <span>Beneficiary ID: <strong className="text-emerald-400 font-mono">{profile.beneficiaryId || 'SC-AJAY-2026-1001'}</strong></span>
                   <span>Location: <strong className="text-slate-200">{profile.district}, {profile.state}</strong></span>
                   <span>Education: <strong className="text-slate-200">{profile.education}</strong></span>
                   <span>Goal: <strong className="text-amber-400">{profile.preferredLivelihood}</strong></span>
@@ -262,6 +339,12 @@ function MainAppContent() {
               </div>
 
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setCurrentView('card')}
+                  className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-2.5 text-xs font-bold text-emerald-300 hover:bg-emerald-950/60"
+                >
+                  <CreditCard size={14} /> View ID Card
+                </button>
                 <button
                   onClick={() => setCurrentView('manual')}
                   className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs font-bold text-slate-300 hover:border-slate-700"
@@ -361,3 +444,4 @@ export default function Home() {
     </AuthProvider>
   );
 }
+

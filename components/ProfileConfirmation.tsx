@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { BeneficiaryProfile } from '@/lib/types';
-import { Sparkles, CheckCircle2, Edit3, ArrowRight, UserCheck, ShieldCheck, MapPin, Briefcase, GraduationCap } from 'lucide-react';
+import { Sparkles, CheckCircle2, Edit3, ArrowRight, UserCheck, ShieldCheck, MapPin, Briefcase, GraduationCap, Phone } from 'lucide-react';
 
 interface ConfirmProps {
   profile: BeneficiaryProfile;
@@ -16,7 +16,7 @@ export default function ProfileConfirmation({ profile, onConfirm, onEdit }: Conf
       <div className="text-center max-w-xl mx-auto mb-8">
         <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-400 border border-emerald-500/20">
           <Sparkles size={14} />
-          <span>Profile Verification</span>
+          <span>PM-AJAY Beneficiary Profile Verification</span>
         </div>
         <h1 className="mt-3 text-3xl font-bold font-serif text-slate-100">
           Here is what we understood about you.
@@ -34,8 +34,13 @@ export default function ProfileConfirmation({ profile, onConfirm, onEdit }: Conf
               <UserCheck size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold font-serif text-slate-100">{profile.name}</h2>
-              <p className="text-xs text-slate-400 flex items-center gap-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold font-serif text-slate-100">{profile.name}</h2>
+                <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  {profile.beneficiaryId || 'SC-AJAY-2026-1001'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                 <MapPin size={13} className="text-emerald-400" />
                 {profile.district}, {profile.state} ({profile.areaType})
               </p>
@@ -43,7 +48,7 @@ export default function ProfileConfirmation({ profile, onConfirm, onEdit }: Conf
           </div>
 
           <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
-            {profile.age} Years Old · {profile.gender}
+            {profile.age} Yrs · {profile.gender}
           </span>
         </div>
 
@@ -93,7 +98,7 @@ export default function ProfileConfirmation({ profile, onConfirm, onEdit }: Conf
             onClick={onConfirm}
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-6 py-4 font-bold text-sm transition-all shadow-xl"
           >
-            <span>Confirm Profile & View Livelihood Plan</span>
+            <span>Confirm Profile & Issue Digital Passbook</span>
             <ArrowRight size={18} />
           </button>
 
@@ -109,3 +114,4 @@ export default function ProfileConfirmation({ profile, onConfirm, onEdit }: Conf
     </div>
   );
 }
+

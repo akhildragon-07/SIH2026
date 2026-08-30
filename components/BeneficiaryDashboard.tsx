@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { NSQF_COURSES_DATASET } from '@/lib/nsqf-data';
-import { UserCheck, GraduationCap, Bookmark, Sparkles, CheckCircle2, AlertTriangle, ArrowRight, ExternalLink, ShieldCheck, Edit3 } from 'lucide-react';
+import { UserCheck, GraduationCap, Bookmark, Sparkles, CheckCircle2, AlertTriangle, ArrowRight, ExternalLink, ShieldCheck, Edit3, CreditCard } from 'lucide-react';
 import NSQFRecommendations from './NSQFRecommendations';
 import SkillGapAnalysis from './SkillGapAnalysis';
 import CareerRoadmap from './CareerRoadmap';
+import BeneficiaryAccountCard from './BeneficiaryAccountCard';
 import { analyzeBeneficiaryProfile } from '@/lib/ai-engine';
 
 interface DashboardProps {
@@ -16,12 +17,11 @@ interface DashboardProps {
 
 export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: DashboardProps) {
   const { user, profile, savedCourseIds } = useAuth();
-  const [activeTab, setActiveTab] = useState<'saved' | 'recommended' | 'gaps' | 'roadmap'>('saved');
+  const [activeTab, setActiveTab] = useState<'card' | 'recommended' | 'gaps' | 'roadmap' | 'saved'>('card');
 
   const analysis = analyzeBeneficiaryProfile(profile);
-
   const savedCourses = NSQF_COURSES_DATASET.filter((c) => savedCourseIds.includes(c.id));
-  const completionPct = profile.profileCompletionPercentage || 85;
+  const completionPct = profile.profileCompletionPercentage || 100;
 
   return (
     <div className="w-full mx-auto max-w-7xl px-4 py-8 space-y-8">
@@ -33,9 +33,10 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
             <span>Beneficiary Livelihood Dashboard</span>
           </div>
           <h1 className="mt-2 text-3xl font-bold font-serif text-slate-100">
-            Welcome back, {profile.name}!
+            Welcome, {profile.name}!
           </h1>
           <p className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-3">
+            <span>Beneficiary ID: <strong className="text-emerald-400 font-mono">{profile.beneficiaryId || 'SC-AJAY-2026-1001'}</strong></span>
             <span>Location: <strong className="text-slate-200">{profile.district}, {profile.state}</strong></span>
             <span>Education: <strong className="text-slate-200">{profile.education}</strong></span>
             <span>Goal: <strong className="text-amber-400">{profile.preferredLivelihood}</strong></span>
@@ -62,23 +63,21 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
       {/* Metrics Row */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Profile Completion</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Profile Status</p>
           <div className="flex items-center justify-between">
-            <p className="text-2xl font-bold font-serif text-emerald-400">{completionPct}%</p>
-            <div className="h-2 w-20 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
-              <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${completionPct}%` }} />
-            </div>
+            <p className="text-2xl font-bold font-serif text-emerald-400">Verified</p>
+            <span className="size-2.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Recommended Courses</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Recommended Pathways</p>
           <p className="text-2xl font-bold font-serif text-teal-400">{analysis.nsqfRecommendations.length}</p>
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Saved Courses</p>
-          <p className="text-2xl font-bold font-serif text-amber-400">{savedCourseIds.length}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Mapped Skills</p>
+          <p className="text-2xl font-bold font-serif text-amber-400">{profile.existingSkills?.length || 0}</p>
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-1">
@@ -92,10 +91,11 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
       {/* Tabs */}
       <div className="flex gap-3 overflow-x-auto border-b border-slate-800 pb-2">
         {[
-          { id: 'saved', label: `Saved Courses (${savedCourses.length})`, icon: Bookmark },
+          { id: 'card', label: 'PM-AJAY Digital ID Card', icon: CreditCard },
           { id: 'recommended', label: 'Recommended NSQF Courses', icon: GraduationCap },
           { id: 'gaps', label: 'Skill Gap Diagnostics', icon: AlertTriangle },
-          { id: 'roadmap', label: 'Career Roadmap', icon: Sparkles }
+          { id: 'roadmap', label: 'Career Roadmap', icon: Sparkles },
+          { id: 'saved', label: `Saved Courses (${savedCourses.length})`, icon: Bookmark }
         ].map((t) => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
@@ -116,6 +116,26 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
 
       {/* Tab Content */}
       <div>
+        {activeTab === 'card' && (
+          <BeneficiaryAccountCard
+            profile={profile}
+            onEditProfile={onEditProfile}
+            onViewRecommendations={() => setActiveTab('recommended')}
+          />
+        )}
+
+        {activeTab === 'recommended' && (
+          <NSQFRecommendations courses={analysis.nsqfRecommendations} />
+        )}
+
+        {activeTab === 'gaps' && (
+          <SkillGapAnalysis skillGap={analysis.skillGap} />
+        )}
+
+        {activeTab === 'roadmap' && (
+          <CareerRoadmap steps={analysis.careerRoadmap} beneficiaryName={profile.name} />
+        )}
+
         {activeTab === 'saved' && (
           <div className="space-y-4">
             {savedCourses.length === 0 ? (
@@ -152,19 +172,8 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
             )}
           </div>
         )}
-
-        {activeTab === 'recommended' && (
-          <NSQFRecommendations courses={analysis.nsqfRecommendations} />
-        )}
-
-        {activeTab === 'gaps' && (
-          <SkillGapAnalysis skillGap={analysis.skillGap} />
-        )}
-
-        {activeTab === 'roadmap' && (
-          <CareerRoadmap steps={analysis.careerRoadmap} beneficiaryName={profile.name} />
-        )}
       </div>
     </div>
   );
 }
+

@@ -12,65 +12,107 @@ export interface SpeechLanguage {
 export const SUPPORTED_LANGUAGES: Record<string, SpeechLanguage> = {
   'English': {
     name: 'English',
-    nativeName: 'English (India)',
+    nativeName: 'English',
     code: 'en-IN',
     voiceLang: 'en-IN',
     samplePhrases: [
-      "I completed 10th pass",
-      "I know tailoring and garment stitching",
-      "I have 2 years experience and want self-employment with PM-AJAY toolkit grant",
-      "I have basic computer typing and data entry skills"
+      "Yashwant, 24",
+      "I completed 10th standard pass",
+      "I know plumbing with 2 years of experience",
+      "Tamil Nadu, Theni district",
+      "I am looking for a salaried Job"
     ]
   },
   'हिंदी': {
     name: 'Hindi',
-    nativeName: 'हिंदी (भारत)',
+    nativeName: 'हिंदी',
     code: 'hi-IN',
     voiceLang: 'hi-IN',
     samplePhrases: [
+      "राहुल कुमार, 25",
       "मैंने 10वीं कक्षा पास की है",
-      "मुझे सिलाई, कटाई और टेलरिंग का काम आता है",
-      "मैं सिलाई की अपनी दुकान खोलना चाहता हूँ और टूलकिट सहायता चाहता हूँ",
-      "मुझे बिजली वायरिंग और सोलर पैनल का अनुभव है"
+      "मुझे सिलाई-कटाई और टेलरिंग का काम आता है, 3 साल का अनुभव",
+      "उत्तर प्रदेश, वाराणसी जिला",
+      "मुझे नौकरी (Job) चाहिए"
     ]
   },
   'తెలుగు': {
     name: 'Telugu',
-    nativeName: 'తెలుగు (భారత్)',
+    nativeName: 'తెలుగు',
     code: 'te-IN',
     voiceLang: 'te-IN',
     samplePhrases: [
+      "అఖిల్, 24",
       "నేను 10వ తరగతి పూర్తి చేసాను",
-      "నాకు టైలరింగ్ మరియు బట్టలు కుట్టే పని వచ్చు",
-      "నేను PM-AJAY గ్రాంట్‌తో స్వయం ఉపాధి షాపు ప్రారంభించాలనుకుంటున్నాను",
-      "నాకు ఎలక్ట్రికల్ వైరింగ్ మరియు మోటార్ రిపేర్ వచ్చు"
+      "నాకు ప్లంబింగ్ వచ్చు, 2 సంవత్సరాల అనుభవం",
+      "ఆంధ్రప్రదేశ్, విజయనగరం జిల్లా",
+      "నేను ఉద్యోగం (Job) కోరుకుంటున్నాను"
     ]
   },
   'தமிழ்': {
     name: 'Tamil',
-    nativeName: 'தமிழ் (இந்தியா)',
+    nativeName: 'தமிழ்',
     code: 'ta-IN',
     voiceLang: 'ta-IN',
     samplePhrases: [
-      "நான் 10 ஆம் வகுப்பு தேர்ச்சி பெற்றுள்ளேன்",
-      "எனக்கு தையல் மற்றும் ஆடை தைக்கும் திறன் உள்ளது",
-      "நான் PM-AJAY கருவி மானியத்துடன் சொந்த தொழில் தொடங்க விரும்புகிறேன்",
-      "எனக்கு கணினி தட்டச்சு மற்றும் டேட்டா என்ட்ரி தெரியும்"
+      "யஷ்வந்த், 24",
+      "நான் 10-வது வகுப்பு தேர்ச்சி",
+      "எனக்கு ப்ளம்பிங் தெரியும், 2 வருட அனுபவம்",
+      "தமிழ்நாடு, தேனி மாவட்டம்",
+      "நான் மாதச் சம்பள வேலை (Job) விரும்புகிறேன்"
     ]
   },
   'मराठी': {
     name: 'Marathi',
-    nativeName: 'मराठी (भारत)',
+    nativeName: 'मराठी',
     code: 'mr-IN',
     voiceLang: 'mr-IN',
     samplePhrases: [
-      "मी 10वी उत्तीर्ण झालो आहे",
-      "मला टेलरिंग आणि कपडे शिवण्याचे कौशल्य आहे",
-      "मला PM-AJAY टूलकिट अनुदानासह स्वतःचा व्यवसाय सुरू करायचा आहे",
-      "मला मोबाईल रिपेअरिंग आणि कॉम्प्युटरचे ज्ञान आहे"
+      "सचिन, 24",
+      "मी 10वी पास झालो आहे",
+      "मला प्लंबिंगचे काम येते, 2 वर्षे अनुभव",
+      "महाराष्ट्र, सोलापूर जिल्हा",
+      "मला नोकरी (Job) हवी आहे"
     ]
   }
 };
+
+/**
+ * Normalizes any language input into standard SpeechLanguage configuration
+ */
+export function resolveLanguageConfig(langInput?: string): SpeechLanguage {
+  if (!langInput) return SUPPORTED_LANGUAGES['English'];
+  const l = langInput.toLowerCase().trim();
+
+  if (l.includes('tamil') || l.includes('தமிழ்') || l.startsWith('ta')) {
+    return SUPPORTED_LANGUAGES['தமிழ்'];
+  }
+  if (l.includes('telugu') || l.includes('తెలుగు') || l.startsWith('te')) {
+    return SUPPORTED_LANGUAGES['తెలుగు'];
+  }
+  if (l.includes('hindi') || l.includes('हिंदी') || l.startsWith('hi')) {
+    return SUPPORTED_LANGUAGES['हिंदी'];
+  }
+  if (l.includes('marathi') || l.includes('मराठी') || l.startsWith('mr')) {
+    return SUPPORTED_LANGUAGES['मराठी'];
+  }
+  return SUPPORTED_LANGUAGES['English'];
+}
+
+/**
+ * Detect language script directly from spoken transcript
+ */
+export function detectLanguageFromText(text: string): string {
+  if (/[\u0B80-\u0BFF]/.test(text)) return 'தமிழ்';
+  if (/[\u0C00-\u0C7F]/.test(text)) return 'తెలుగు';
+  if (/[\u0900-\u097F]/.test(text)) {
+    if (text.includes('आहे') || text.includes('माझे') || text.includes('नाव') || text.includes('वर्षे') || text.includes('पाहिजे')) {
+      return 'मराठी';
+    }
+    return 'हिंदी';
+  }
+  return 'English';
+}
 
 let recognitionInstance: any = null;
 let activeMediaStream: MediaStream | null = null;
@@ -118,7 +160,7 @@ export function startSpeechRecognition(
   accumulatedFinalText = '';
   isCurrentlyListening = true;
 
-  const langConfig = SUPPORTED_LANGUAGES[languageName] || SUPPORTED_LANGUAGES['English'];
+  const langConfig = resolveLanguageConfig(languageName);
 
   try {
     recognitionInstance = new SpeechRecognition();
@@ -276,7 +318,7 @@ function cleanupAudioLevelStream() {
 }
 
 /**
- * Text-to-Speech Utterance with Indian Language support
+ * Text-to-Speech Utterance with Indian Regional Language support
  */
 export function speakText(text: string, languageName: string = 'English', onEnd?: () => void) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -290,19 +332,39 @@ export function speakText(text: string, languageName: string = 'English', onEnd?
   const cleanText = text
     .replace(/[*_#`~]/g, '')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/https?:\/\/\S+/g, 'link');
+    .replace(/\([^)]+\)/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .trim();
 
-  const langConfig = SUPPORTED_LANGUAGES[languageName] || SUPPORTED_LANGUAGES['English'];
+  if (!cleanText) {
+    if (onEnd) onEnd();
+    return;
+  }
+
+  const langConfig = resolveLanguageConfig(languageName);
   const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.lang = langConfig.voiceLang;
-  utterance.rate = 0.95;
+  utterance.rate = 0.92;
   utterance.pitch = 1.0;
 
   const voices = window.speechSynthesis.getVoices();
-  const matchedVoice = voices.find((v) => 
-    v.lang.toLowerCase().includes(langConfig.code.toLowerCase()) ||
-    v.lang.toLowerCase().replace('_', '-').includes(langConfig.voiceLang.toLowerCase())
-  );
+  const langPrefix = langConfig.code.split('-')[0].toLowerCase(); // e.g. 'ta', 'te', 'hi', 'mr', 'en'
+
+  // Match regional Indian voices specifically
+  const matchedVoice = voices.find((v) => {
+    const vLang = v.lang.toLowerCase().replace('_', '-');
+    const vName = v.name.toLowerCase();
+
+    return (
+      vLang === langConfig.code.toLowerCase() ||
+      vLang.startsWith(langPrefix) ||
+      vName.includes(langConfig.name.toLowerCase()) ||
+      (langPrefix === 'ta' && (vName.includes('tamil') || vName.includes('valluvar'))) ||
+      (langPrefix === 'te' && (vName.includes('telugu') || vName.includes('mohan'))) ||
+      (langPrefix === 'hi' && (vName.includes('hindi') || vName.includes('kalpana') || vName.includes('hemant') || vName.includes('swara') || vName.includes('madhur'))) ||
+      (langPrefix === 'mr' && (vName.includes('marathi') || vName.includes('aarohi')))
+    );
+  });
 
   if (matchedVoice) {
     utterance.voice = matchedVoice;
@@ -312,7 +374,8 @@ export function speakText(text: string, languageName: string = 'English', onEnd?
     if (onEnd) onEnd();
   };
 
-  utterance.onerror = () => {
+  utterance.onerror = (e) => {
+    console.warn('SpeechSynthesis error:', e);
     if (onEnd) onEnd();
   };
 
@@ -324,4 +387,5 @@ export function stopSpeechSynthesis() {
     window.speechSynthesis.cancel();
   }
 }
+
 

@@ -2,26 +2,25 @@
   {
     "id": "demo-ravi",
     "beneficiaryId": "SC-AJAY-2026-1001",
-    "userId": "user-ravi",
-    "name": "Ravi Kumar",
+    "userId": "user-001",
+    "name": "विजय मैं",
     "phone": "9848022338",
-    "email": "ravi.kumar@pmajay.gov.in",
+    "email": "ravikumar@pmajay.gov.in",
     "category": "Scheduled Caste (SC)",
     "age": 26,
     "gender": "Male",
-    "state": "Andhra Pradesh",
-    "district": "Vizianagaram",
+    "state": "Bihar",
+    "district": "Gaya",
     "areaType": "Rural",
-    "education": "10th Pass",
+    "education": "12th Pass",
     "currentOccupation": "Local Stitching Worker",
     "existingSkills": [
-      "Basic Tailoring",
-      "Garment Finishing",
-      "Hand Stitching"
+      "House Wiring & Electricals",
+      "Electrical Testing"
     ],
-    "workExperienceYears": 2,
+    "workExperienceYears": 10,
     "monthlyIncome": "₹4,000 – ₹7,000",
-    "preferredLivelihood": "Self-employment",
+    "preferredLivelihood": "Job",
     "interests": [
       "Garment Design",
       "Boutique Setup",
@@ -30,8 +29,9 @@
     "careerGoal": "Establish an independent home tailoring unit with motorized equipment under PM-AJAY GIA",
     "giaEligibilityStatus": "Eligible for 100% GIA Toolkit Grant",
     "isBackendSynced": true,
-    "createdAt": "2026-08-30T19:17:06.756Z",
-    "updatedAt": "2026-08-30T19:20:14.432Z"
+    "createdAt": "2026-08-31T07:40:14.498Z",
+    "updatedAt": "2026-08-31T07:40:22.284Z",
+    "profileCompletionPercentage": 100
   },
   {
     "id": "SC-AJAY-2026-1002",

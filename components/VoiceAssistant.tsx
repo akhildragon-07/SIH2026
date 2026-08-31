@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, Send, Sparkles, User, Bot, Check, ArrowRight, AlertCircle, Languages, RefreshCw, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, Send, Sparkles, User, Bot, Check, ArrowRight, AlertCircle, Languages, RefreshCw, CheckCircle2, MapPin, GraduationCap, Briefcase, Award } from 'lucide-react';
 import { BeneficiaryProfile, ChatMessage } from '@/lib/types';
+import { useAuth } from '@/lib/auth-context';
 import { startSpeechRecognition, stopSpeechRecognition, speakText, stopSpeechSynthesis, SUPPORTED_LANGUAGES, isSpeechRecognitionSupported } from '@/lib/speech';
 import { extractProfileFromText } from '@/lib/ai-engine';
 
@@ -12,10 +13,46 @@ interface VoiceAssistantProps {
   onGeneratePlan: () => void;
 }
 
+type StageType = 'name_age' | 'education' | 'skills_exp' | 'location' | 'livelihood_goal' | 'complete';
+
+const STAGE_LABELS: Record<StageType, { step: number; title: string; desc: string }> = {
+  name_age: { step: 1, title: 'Name & Age', desc: 'Personal info' },
+  education: { step: 2, title: 'Education', desc: 'Highest qualification' },
+  skills_exp: { step: 3, title: 'Skills & Exp', desc: 'Trade & Experience' },
+  location: { step: 4, title: 'Location', desc: 'State & District' },
+  livelihood_goal: { step: 5, title: 'Career Goal', desc: 'Job or Self-employment' },
+  complete: { step: 6, title: 'Account Ready', desc: 'NSQF Mapped' }
+};
+
+const INITIAL_WELCOME: Record<string, { welcome: string; prompts: string[] }> = {
+  'Tamil': {
+    welcome: "வணக்கம்! நான் சக்ஷம் AI, PM-AJAY திட்டத்தின் குரல் வழிகாட்டி. உங்கள் முழு பெயர் மற்றும் வயதை சொல்லுங்கள்.",
+    prompts: ["யஷ்வந்த், 24", "என் பேரு குமார், வயது 28", "என் பெயர் சுனிதா, வயது 26"]
+  },
+  'Telugu': {
+    welcome: "నమస్తే! నేను సాక్షమ్ AI, PM-AJAY వాయిస్ గైడ్. దయచేసి మీ పూర్తి పేరు మరియు వయస్సు చెప్పండి.",
+    prompts: ["అఖిల్, 24", "నా పేరు రవి కుమార్, వయస్సు 26", "నా పేరు మనీష్, వయస్సు 22"]
+  },
+  'Hindi': {
+    welcome: "नमस्ते! मैं सक्षम AI हूँ, पीएम-अजय योजना के तहत आपका आवाज़ सहायक। कृपया अपना पूरा नाम और उम्र बताएं।",
+    prompts: ["राहुल, 25", "मेरा नाम रवि कुमार, उम्र 26 वर्ष", "मेरा नाम सुनीता देवी, उम्र 32 वर्ष"]
+  },
+  'Marathi': {
+    welcome: "नमस्ते! मी सक्षम-AI आहे, PM-AJAY योजनेतील तुमचा व्हॉईस मार्गदर्शक. कृपया आपले पूर्ण नाव आणि वय सांगा.",
+    prompts: ["सचिन, 24", "माझे नाव राहुल, वय 26 वर्षे", "माझे नाव सुनिता, वय 30 वर्षे"]
+  },
+  'English': {
+    welcome: "Namaste! I am SakshamAI, your PM-AJAY voice guide. Please tell me your full name and age.",
+    prompts: ["Yashwant, 24", "My name is Yashwant, age 24", "Hey I'm Akhil, age 26"]
+  }
+};
+
 export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGeneratePlan }: VoiceAssistantProps) {
+  const { registerBeneficiary, profile } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
+  const [currentStage, setCurrentStage] = useState<StageType>('name_age');
   const [inputText, setInputText] = useState('');
   const [liveSpokenTranscript, setLiveSpokenTranscript] = useState('');
   const [audioLevel, setAudioLevel] = useState<number>(0);
@@ -24,14 +61,26 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
 
   const activeLangConfig = SUPPORTED_LANGUAGES[selectedLanguage] || SUPPORTED_LANGUAGES['English'];
 
+  const getLangKey = (lang: string) => {
+    if (lang.includes('Tamil') || lang.includes('தமிழ்') || lang.startsWith('ta')) return 'Tamil';
+    if (lang.includes('Telugu') || lang.includes('తెలుగు') || lang.startsWith('te')) return 'Telugu';
+    if (lang.includes('Hindi') || lang.includes('हिंदी') || lang.startsWith('hi')) return 'Hindi';
+    if (lang.includes('Marathi') || lang.includes('मराठी') || lang.startsWith('mr')) return 'Marathi';
+    return 'English';
+  };
+
+  const [activePrompts, setActivePrompts] = useState<string[]>(
+    INITIAL_WELCOME[getLangKey(selectedLanguage)]?.prompts || INITIAL_WELCOME['English'].prompts
+  );
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'msg-1',
       sender: 'assistant',
-      text: 'Namaste! I am SakshamAI, your PM-AJAY voice guide. Speak in your language (English, हिंदी, తెలుగు, தமிழ், मराठी) to map your skills and find NSQF recommendations!',
+      text: INITIAL_WELCOME[getLangKey(selectedLanguage)]?.welcome || INITIAL_WELCOME['English'].welcome,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      language: 'English',
-      suggestedPrompts: activeLangConfig.samplePhrases
+      language: selectedLanguage,
+      suggestedPrompts: INITIAL_WELCOME[getLangKey(selectedLanguage)]?.prompts || INITIAL_WELCOME['English'].prompts
     }
   ]);
 
@@ -42,7 +91,37 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isRecording, liveSpokenTranscript]);
 
-  // Clean up recording and speech on unmount
+  const handleLanguageChange = (newLang: string) => {
+    setSelectedLanguage(newLang);
+    if (isRecording) {
+      stopSpeechRecognition();
+      setIsRecording(false);
+    }
+    stopSpeechSynthesis();
+    setIsPlayingAudio(false);
+
+    const langKey = getLangKey(newLang);
+    const welcomePack = INITIAL_WELCOME[langKey] || INITIAL_WELCOME['English'];
+    setCurrentStage('name_age');
+    setActivePrompts(welcomePack.prompts);
+
+    const resetMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'assistant',
+      text: welcomePack.welcome,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      language: newLang,
+      suggestedPrompts: welcomePack.prompts
+    };
+
+    setMessages([resetMsg]);
+
+    setIsPlayingAudio(true);
+    speakText(welcomePack.welcome, newLang, () => {
+      setIsPlayingAudio(false);
+    });
+  };
+
   useEffect(() => {
     return () => {
       stopSpeechRecognition();
@@ -51,7 +130,6 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
     };
   }, []);
 
-  // Handle Speech Recognition Toggle
   const startRecording = () => {
     if (!isSpeechRecognitionSupported()) {
       setSpeechError('Web Speech API is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Safari, or click the sample phrases below.');
@@ -67,13 +145,11 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
         setLiveSpokenTranscript(transcript);
         setInputText(transcript);
 
-        // Instant real-time profile extraction while speaking
-        if (transcript.trim().length > 5) {
+        if (transcript.trim().length > 3) {
           const liveExtracted = extractProfileFromText(transcript, currentProfile);
           onProfileUpdated(liveExtracted);
         }
 
-        // Reset silence timer on every spoken word
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
           if (transcript.trim().length > 3) {
@@ -120,7 +196,6 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
     }
   };
 
-  // Handle Sending Message
   const handleSendMessage = async (textToSend?: string) => {
     const text = textToSend || inputText;
     if (!text.trim()) return;
@@ -130,9 +205,9 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
     setIsRecording(false);
     setLiveSpokenTranscript('');
 
-    // Instant local extraction
     const instantExtracted = extractProfileFromText(text, currentProfile);
-    onProfileUpdated(instantExtracted);
+    const mergedProfile = { ...currentProfile, ...instantExtracted };
+    onProfileUpdated(mergedProfile);
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -153,32 +228,40 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
         body: JSON.stringify({
           message: text,
           language: selectedLanguage,
-          currentProfile: { ...currentProfile, ...instantExtracted }
+          currentProfile: mergedProfile,
+          stage: currentStage
         })
       });
 
       const json = await res.json();
       if (json.success && json.data) {
-        const { reply, updatedProfile } = json.data;
+        const { reply, updatedProfile, stage, suggestedPrompts, language: serverLang } = json.data;
 
         if (updatedProfile) {
           onProfileUpdated(updatedProfile);
         }
+        if (stage) {
+          setCurrentStage(stage);
+        }
+        if (suggestedPrompts) {
+          setActivePrompts(suggestedPrompts);
+        }
+
+        const effectiveLang = serverLang || selectedLanguage;
 
         const assistantMsg: ChatMessage = {
           id: `asst-${Date.now()}`,
           sender: 'assistant',
           text: reply,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          language: selectedLanguage,
-          suggestedPrompts: activeLangConfig.samplePhrases
+          language: effectiveLang,
+          suggestedPrompts: suggestedPrompts || activePrompts
         };
 
         setMessages((prev) => [...prev, assistantMsg]);
 
-        // Speak reply using TTS
         setIsPlayingAudio(true);
-        speakText(reply, selectedLanguage, () => {
+        speakText(reply, effectiveLang, () => {
           setIsPlayingAudio(false);
         });
       }
@@ -189,59 +272,42 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
     }
   };
 
-
-  const handlePlayTTS = (text: string) => {
+  const handlePlayTTS = (text: string, lang?: string) => {
     if (isPlayingAudio) {
       stopSpeechSynthesis();
       setIsPlayingAudio(false);
     } else {
       setIsPlayingAudio(true);
-      speakText(text, selectedLanguage, () => {
+      speakText(text, lang || selectedLanguage, () => {
         setIsPlayingAudio(false);
       });
     }
   };
 
+  const getLocalizedPlaceholder = () => {
+    const l = selectedLanguage.toLowerCase();
+    if (l.includes('tamil') || l.includes('தமிழ்')) return 'தமிழில் உங்கள் பதிலை சொல்லுங்கள் அல்லது இங்கே தட்டச்சு செய்யுங்கள்...';
+    if (l.includes('telugu') || l.includes('తెలుగు')) return 'తెలుగులో మీ సమాధానం చెప్పండి లేదా ఇక్కడ టైప్ చేయండి...';
+    if (l.includes('hindi') || l.includes('हिंदी')) return 'हिंदी में अपना उत्तर बोलें या यहाँ लिखें...';
+    if (l.includes('marathi') || l.includes('मराठी')) return 'मराठीत आपले उत्तर सांगा किंवा येथे टाईप करा...';
+    return 'Speak or type your answer in English...';
+  };
+
   return (
     <div className="w-full mx-auto max-w-6xl px-4 py-8">
-      {/* Top Title & Language Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6 mb-8">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
-            <Sparkles size={14} />
-            <span>AI Voice Engine · Hindi, Telugu, Tamil, Marathi & English</span>
-          </div>
-          <h1 className="mt-2 text-3xl sm:text-4xl font-bold font-serif text-slate-100">
-            Voice Assistant & Speech-to-Text Converter
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Talk about your skills, education, and career dream. SakshamAI extracts your details in real time.
-          </p>
-        </div>
-
-        {/* Language Selector */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-bold text-emerald-300 shadow-sm">
-            <Languages size={16} className="text-emerald-400" />
-            <span>Language:</span>
-            <select
-              value={selectedLanguage}
-              onChange={(e) => {
-                const newLang = e.target.value;
-                setSelectedLanguage(newLang);
-                if (isRecording) {
-                  stopSpeechRecognition();
-                  setIsRecording(false);
-                }
-              }}
-              className="bg-slate-900 px-2 py-1 rounded-lg border border-emerald-500/40 font-bold text-emerald-300 outline-none cursor-pointer"
-            >
-              {Object.keys(SUPPORTED_LANGUAGES).map((lang) => (
-                <option key={lang} value={lang} className="bg-slate-900 text-slate-200">
-                  {SUPPORTED_LANGUAGES[lang].nativeName}
-                </option>
-              ))}
-            </select>
+      <div className="flex flex-col gap-5 border-b border-slate-800 pb-6 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+              <Sparkles size={14} />
+              <span>Interactive AI Voice Assistant · 5 Regional Indian Languages</span>
+            </div>
+            <h1 className="mt-2 text-3xl sm:text-4xl font-bold font-serif text-slate-100">
+              PM-AJAY Voice Assistant
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Select your native language below. The assistant will ask questions and reply aloud in that language!
+            </p>
           </div>
 
           <button
@@ -252,13 +318,76 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
             <ArrowRight size={15} />
           </button>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-2xl bg-slate-950/70 border border-slate-800">
+          <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mr-2">
+            <Languages size={15} className="text-emerald-400" />
+            <span>Choose Language:</span>
+          </span>
+
+          {[
+            { key: 'தமிழ்', label: 'தமிழ் (Tamil)', flag: '🇮🇳' },
+            { key: 'తెలుగు', label: 'తెలుగు (Telugu)', flag: '🇮🇳' },
+            { key: 'हिंदी', label: 'हिंदी (Hindi)', flag: '🇮🇳' },
+            { key: 'मराठी', label: 'मराठी (Marathi)', flag: '🇮🇳' },
+            { key: 'English', label: 'English', flag: '🌐' }
+          ].map((langItem) => {
+            const isSelected =
+              selectedLanguage === langItem.key ||
+              getLangKey(selectedLanguage) === getLangKey(langItem.key);
+
+            return (
+              <button
+                key={langItem.key}
+                onClick={() => handleLanguageChange(langItem.key)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30 scale-[1.02] ring-2 ring-emerald-400'
+                    : 'bg-slate-900/90 text-slate-300 border border-slate-700/80 hover:bg-slate-800 hover:text-emerald-300'
+                }`}
+              >
+                <span>{langItem.flag}</span>
+                <span>{langItem.label}</span>
+                {isSelected && <Check size={13} className="stroke-[3]" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Main Panel */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-6">
+        {(Object.keys(STAGE_LABELS) as StageType[]).map((stageKey) => {
+          const info = STAGE_LABELS[stageKey];
+          const isCurrent = currentStage === stageKey;
+          const isPassed = STAGE_LABELS[currentStage].step > info.step;
+
+          return (
+            <div
+              key={stageKey}
+              className={`p-3 rounded-2xl border text-center transition-all ${
+                isCurrent
+                  ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300 ring-2 ring-emerald-500/30 shadow-md'
+                  : isPassed
+                  ? 'border-emerald-500/40 bg-slate-900/60 text-slate-300'
+                  : 'border-slate-800/80 bg-slate-950/40 text-slate-500 opacity-60'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold">
+                {isPassed ? (
+                  <Check size={13} className="text-emerald-400 font-bold" />
+                ) : (
+                  <span className="size-4 rounded-full bg-slate-800 text-[10px] grid place-items-center">{info.step}</span>
+                )}
+                <span className="truncate">{info.title}</span>
+              </div>
+              <span className="text-[10px] text-slate-400 block mt-0.5 truncate">{info.desc}</span>
+            </div>
+          );
+        })}
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
-        {/* Left: Multilingual Voice Chat */}
         <div className="flex flex-col rounded-3xl border border-slate-800 bg-slate-900/90 shadow-2xl overflow-hidden min-h-[600px]">
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/70 p-4 px-6">
             <div className="flex items-center gap-3">
               <div className="grid size-10 place-items-center rounded-2xl bg-emerald-500/20 text-emerald-400 shadow-inner">
@@ -271,7 +400,7 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
                   {isRecording ? (
                     <span className="text-rose-400 font-bold">Listening in {activeLangConfig.nativeName}...</span>
                   ) : (
-                    <span>Ready ({activeLangConfig.code})</span>
+                    <span>Speaking & Listening in {activeLangConfig.nativeName} ({activeLangConfig.code})</span>
                   )}
                 </p>
               </div>
@@ -285,12 +414,11 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
                 }}
                 className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
               >
-                <VolumeX size={14} /> Mute Audio
+                <VolumeX size={14} /> Mute Voice
               </button>
             )}
           </div>
 
-          {/* Chat Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
             {messages.map((msg) => {
               const isAssistant = msg.sender === 'assistant';
@@ -306,25 +434,25 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
                   >
                     {isAssistant ? <Bot size={15} /> : <User size={15} />}
                   </div>
-
-                  <div className="space-y-2">
+                  <div>
                     <div
-                      className={`rounded-2xl p-4 text-sm leading-relaxed ${
+                      className={`p-4 rounded-3xl text-sm leading-relaxed ${
                         isAssistant
-                          ? 'rounded-tl-sm bg-slate-800/90 text-slate-100 border border-slate-700/60'
-                          : 'rounded-tr-sm bg-emerald-600 text-slate-950 font-semibold shadow-md'
+                          ? 'bg-slate-800/90 text-slate-100 border border-slate-700/60 rounded-tl-sm'
+                          : 'bg-emerald-600 text-slate-950 font-medium rounded-tr-sm'
                       }`}
                     >
                       <p>{msg.text}</p>
                     </div>
 
                     {isAssistant && (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 mt-1.5 px-1">
                         <button
-                          onClick={() => handlePlayTTS(msg.text)}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-emerald-400 transition-colors"
+                          onClick={() => handlePlayTTS(msg.text, msg.language)}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
                         >
-                          <Volume2 size={13} /> Listen in {selectedLanguage}
+                          <Volume2 size={13} />
+                          <span>🔊 Listen ({msg.language || selectedLanguage})</span>
                         </button>
                         <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
                       </div>
@@ -376,13 +504,13 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
               </div>
             )}
 
-            {/* Quick Regional Voice Prompt Pills */}
+            {/* Quick Regional Voice Prompt Pills for Current Step */}
             <div className="rounded-2xl bg-slate-950/80 p-4 border border-slate-800 space-y-2.5">
               <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                <Sparkles size={14} /> Tap to speak or test voice prompt ({activeLangConfig.nativeName}):
+                <Sparkles size={14} /> Quick voice prompts for Step {STAGE_LABELS[currentStage].step} ({activeLangConfig.nativeName}):
               </p>
               <div className="flex flex-wrap gap-2">
-                {activeLangConfig.samplePhrases.map((phrase, i) => (
+                {activePrompts.map((phrase, i) => (
                   <button
                     key={i}
                     onClick={() => handleSendMessage(phrase)}
@@ -445,7 +573,7 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder={`Speak in ${selectedLanguage} or type here...`}
+                placeholder={getLocalizedPlaceholder()}
                 className="flex-1 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3.5 text-sm text-slate-100 outline-none focus:border-emerald-500/60 placeholder:text-slate-500"
               />
 
@@ -469,42 +597,92 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
                 <span>Live Extracted Profile</span>
               </div>
               <span className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full font-bold">
-                Auto-Updating
+                Step {STAGE_LABELS[currentStage].step} of 5
               </span>
             </div>
 
             <div className="mt-6 space-y-4">
+              {/* Name & Age */}
               <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800/80">
-                <p className="text-xs font-bold text-slate-400">Beneficiary Name & Region</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                    <User size={14} className="text-emerald-400" />
+                    <span>Beneficiary Name & Age</span>
+                  </p>
+                  {currentProfile.name && !['Ravi Kumar', 'Sunil', 'Demo User'].includes(currentProfile.name) && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                      <CheckCircle2 size={12} /> Verified
+                    </span>
+                  )}
+                </div>
                 <p className="text-base font-bold text-slate-100 mt-1 flex items-center justify-between">
-                  <span>{currentProfile.name || 'Ravi'}</span>
-                  <span className="text-xs font-semibold text-slate-400">
-                    {currentProfile.district || 'Vizianagaram'}, {currentProfile.state || 'Andhra Pradesh'}
-                  </span>
+                  <span>{currentProfile.name || <span className="text-slate-500 font-normal italic">Waiting for name...</span>}</span>
+                  {currentProfile.age && (
+                    <span className="text-xs font-semibold text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                      Age: {currentProfile.age} yrs
+                    </span>
+                  )}
                 </p>
               </div>
 
+              {/* State & District */}
+              <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                    <MapPin size={14} className="text-sky-400" />
+                    <span>State & District</span>
+                  </p>
+                  {currentProfile.district && currentProfile.state && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-sky-400 font-bold bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/30">
+                      <CheckCircle2 size={12} /> Captured
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-bold text-slate-100 mt-1">
+                  {currentProfile.district || currentProfile.state ? (
+                    <span className="text-sky-300">{currentProfile.district ? `${currentProfile.district}, ` : ''}{currentProfile.state || ''}</span>
+                  ) : (
+                    <span className="text-slate-500 font-normal italic">Waiting for state & district...</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Education & Preferred Goal */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-2xl bg-slate-950/60 p-3.5 border border-slate-800/80">
-                  <p className="text-xs text-slate-400">Education Level</p>
-                  <p className="text-sm font-bold text-emerald-400 mt-1">
-                    {currentProfile.education || '10th Pass'}
+                  <p className="text-xs text-slate-400 flex items-center gap-1">
+                    <GraduationCap size={13} className="text-purple-400" />
+                    <span>Education</span>
+                  </p>
+                  <p className="text-sm font-bold text-purple-300 mt-1">
+                    {currentProfile.education || <span className="text-slate-500 font-normal italic text-xs">Waiting...</span>}
                   </p>
                 </div>
 
                 <div className="rounded-2xl bg-slate-950/60 p-3.5 border border-slate-800/80">
-                  <p className="text-xs text-slate-400">Preferred Goal</p>
+                  <p className="text-xs text-slate-400 flex items-center gap-1">
+                    <Briefcase size={13} className="text-amber-400" />
+                    <span>Preference</span>
+                  </p>
                   <p className="text-sm font-bold text-amber-400 mt-1">
-                    {currentProfile.preferredLivelihood || 'Self-employment'}
+                    {currentProfile.preferredLivelihood || <span className="text-slate-500 font-normal italic text-xs">Waiting...</span>}
                   </p>
                 </div>
               </div>
 
+              {/* Skills & Experience */}
               <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800/80">
-                <p className="text-xs font-bold text-slate-400 mb-2.5 flex items-center justify-between">
-                  <span>Mapped Skills ({currentProfile.existingSkills?.length || 0})</span>
-                  <span className="text-[10px] text-emerald-400">NSQF Aligned</span>
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                    <Award size={14} className="text-emerald-400" />
+                    <span>Skills & Trade Experience</span>
+                  </p>
+                  {currentProfile.workExperienceYears !== undefined && currentProfile.workExperienceYears > 0 && (
+                    <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                      {currentProfile.workExperienceYears} Years Exp
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {currentProfile.existingSkills && currentProfile.existingSkills.length > 0 ? (
                     currentProfile.existingSkills.map((sk) => (
@@ -516,14 +694,14 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-slate-500 italic">No skills extracted yet. Speak your experience into the microphone!</span>
+                    <span className="text-xs text-slate-500 italic">No skills extracted yet. Speak your experience!</span>
                   )}
                 </div>
               </div>
 
               {currentProfile.careerGoal && (
                 <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800/80">
-                  <p className="text-xs font-bold text-slate-400">Beneficiary Vision</p>
+                  <p className="text-xs font-bold text-slate-400">Career Goal & PM-AJAY Path</p>
                   <p className="text-xs text-slate-200 mt-1 leading-relaxed">
                     "{currentProfile.careerGoal}"
                   </p>
@@ -534,7 +712,34 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
 
           <div className="mt-8 pt-6 border-t border-slate-800 space-y-3">
             <button
-              onClick={onGeneratePlan}
+              onClick={async () => {
+                if (currentProfile.name && !['Ravi Kumar', 'Sunil', 'Demo User'].includes(currentProfile.name)) {
+                  const fullProf: BeneficiaryProfile = {
+                    ...profile,
+                    ...currentProfile,
+                    id: currentProfile.id || `ben-${Date.now()}`,
+                    name: currentProfile.name,
+                    phone: currentProfile.phone || '9848022338',
+                    email: currentProfile.email || `${currentProfile.name.toLowerCase().replace(/\s+/g, '.')}@pmajay.gov.in`,
+                    category: currentProfile.category || 'Scheduled Caste (SC)',
+                    age: currentProfile.age || 24,
+                    gender: currentProfile.gender || 'Male',
+                    state: currentProfile.state || 'Tamil Nadu',
+                    district: currentProfile.district || 'Theni',
+                    areaType: currentProfile.areaType || 'Rural',
+                    education: currentProfile.education || '10th Pass',
+                    currentOccupation: currentProfile.currentOccupation || (currentProfile.existingSkills?.[0] ? `${currentProfile.existingSkills[0]} Worker` : 'Trainee'),
+                    existingSkills: currentProfile.existingSkills && currentProfile.existingSkills.length > 0 ? currentProfile.existingSkills : ['Plumbing & Pipe Fitting'],
+                    workExperienceYears: currentProfile.workExperienceYears || 2,
+                    monthlyIncome: currentProfile.monthlyIncome || '₹5,000 – ₹8,000',
+                    preferredLivelihood: currentProfile.preferredLivelihood || 'Job',
+                    interests: currentProfile.interests || ['Skill Certification', 'PM-AJAY Employment'],
+                    careerGoal: currentProfile.careerGoal || `Pursue career in ${currentProfile.existingSkills?.[0] || 'Technical Trades'} with PM-AJAY support.`
+                  };
+                  await registerBeneficiary(fullProf);
+                }
+                onGeneratePlan();
+              }}
               className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 px-6 py-4 font-bold text-sm transition-all shadow-xl shadow-emerald-500/20 hover:scale-[1.01]"
             >
               <span>Confirm & Generate Livelihood Plan</span>
@@ -546,4 +751,5 @@ export default function VoiceAssistant({ currentProfile, onProfileUpdated, onGen
     </div>
   );
 }
+
 

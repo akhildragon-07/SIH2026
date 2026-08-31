@@ -264,139 +264,486 @@ export function analyzeBeneficiaryProfile(profile: BeneficiaryProfile): Analysis
 }
 
 /**
- * Natural language extraction supporting English, Hindi, Telugu, Tamil, Marathi text/voice
+ * Comprehensive Multilingual Natural Language Extraction
+ * Supporting English, Tamil (தமிழ்), Telugu (తెలుగు), Hindi (हिंदी), and Marathi (मराठी)
  */
 export function extractProfileFromText(transcript: string, currentProfile?: Partial<BeneficiaryProfile>): Partial<BeneficiaryProfile> {
-  const text = transcript.toLowerCase();
+  const text = transcript.toLowerCase().trim();
   const extracted: Partial<BeneficiaryProfile> = { ...currentProfile };
 
-  // 1. Full Name Extraction (Multilingual)
-  const namePatterns = [
-    /(?:hey\s+|hi\s+|hello\s+)?(?:i['’]m|i\s+am|myself|this\s+is)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)(?:\s+i\s+have|\s+i\s+studied|\s+and|\s+from|\s+my|,|\.|$)/i,
-    /(?:my\s+name\s+is)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)(?:\s+i\s+have|\s+i\s+am|\s+and|\s+from|,|\.|$)/i,
-    /(?:mera\s+naam|meri\s+naam)\s+([a-zA-Z\u0900-\u097F]+(?:\s+[a-zA-Z\u0900-\u097F]+)?)(?:\s+hai|\s+aur|,|\.|$)/i,
-    /(?:naa\s+peru|na\s+peru)\s+([a-zA-Z\u0C00-\u0C7F]+(?:\s+[a-zA-Z\u0C00-\u0C7F]+)?)(?:\s+andi|\s+nenu|,|\.|$)/i,
-    /(?:en\s+peyar)\s+([a-zA-Z\u0B80-\u0BFF]+(?:\s+[a-zA-Z\u0B80-\u0BFF]+)?)/i,
-    /(?:maaze\s+naav)\s+([a-zA-Z\u0900-\u097F]+(?:\s+[a-zA-Z\u0900-\u097F]+)?)/i
+  // 1. Full Name & Age Extraction (Multilingual)
+  const stopWords = [
+    'looking', 'interested', 'seeking', 'working', 'living', 'from', 'pass', 'passed', 'standard', 'tenth', 'student', 'here',
+    'நான்', 'தமிழ்நாடு', 'ஸ்டேட்லேருந்து', 'டிஸ்ட்ரிக்ட்', 'இருந்து', 'வந்து', 'தெரியும்', 'வேலை', 'மாதச்', 'சம்பள',
+    'నేను', 'నుండి', 'మరియు', 'తెలుసు', 'ఉద్యోగం', 'జాబ్',
+    'है', 'हूँ', 'का', 'की', 'से', 'और', 'रहता', 'काम', 'नौकरी',
+    'आहे', 'मी', 'आणि', 'राहतो', 'नोकरी',
+    'job', 'self', 'employment', 'business', 'training', 'plumbing', 'tailoring', 'electrical', 'farming'
   ];
 
-  for (const pattern of namePatterns) {
-    const match = transcript.match(pattern);
-    if (match && match[1]) {
-      const rawName = match[1].trim();
-      const invalidWords = ['looking', 'interested', 'seeking', 'working', 'living', 'from', 'pass', 'passed', 'standard', 'tenth', 'student', 'here'];
-      if (!invalidWords.includes(rawName.toLowerCase()) && rawName.length >= 2) {
-        extracted.name = rawName
-          .split(/\s+/)
-          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-          .join(' ');
-        break;
+  // Direct Format Match: e.g. "Yashwant, 24, age old" or "Yashwant 24" or "Yashwant, 24"
+  const directNameAgeMatch = transcript.match(/^([a-zA-Z\u0900-\u097F\u0B80-\u0BFF\u0C00-\u0C7F]+(?:\s+[a-zA-Z\u0900-\u097F\u0B80-\u0BFF\u0C00-\u0C7F]+)?)\s*[,|\s]+\s*(\d{1,2})(?:\s*[,|\s]|\.|$)/i);
+  if (directNameAgeMatch && directNameAgeMatch[1]) {
+    const candidateName = directNameAgeMatch[1].trim().replace(/[(),.]/g, '');
+    const candidateAge = parseInt(directNameAgeMatch[2], 10);
+
+    if (!stopWords.includes(candidateName.toLowerCase()) && candidateName.length >= 2 && !/^\d+$/.test(candidateName)) {
+      if (/^[a-zA-Z\s]+$/.test(candidateName)) {
+        extracted.name = candidateName.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      } else {
+        extracted.name = candidateName;
+      }
+    }
+    if (candidateAge >= 15 && candidateAge <= 65) {
+      extracted.age = candidateAge;
+    }
+  }
+
+  // If name not yet extracted, check patterns
+  if (!extracted.name) {
+    const namePatterns = [
+      // Tamil: என் பேரு யஷ்வந்த் / என் பெயர் யஷ்வந்த்
+      /(?:என்\s*பேரு|என்\s*பெயர்|என்\s*பேர்|என்\s*பெயரு)\s+([^\s,.\n()]+(?:\s+[^\s,.\n()]+)?)/i,
+      // Telugu: నా పేరు అఖిల్
+      /(?:నా\s*పేరు|నా\s*పేరు\s*వచ్చి)\s+([^\s,.\n()]+(?:\s+[^\s,.\n()]+)?)/i,
+      // Hindi: मेरा नाम राहुल कुमार / मेरी नाम
+      /(?:मेरा\s*नाम|मेरी\s*नाम)\s+([^\s,.\n()]+(?:\s+[^\s,.\n()]+)?)/i,
+      // Marathi: माझे नाव सचिन / माझं नाव
+      /(?:माझे\s*नाव|माझं\s*नाव)\s+([^\s,.\n()]+(?:\s+[^\s,.\n()]+)?)/i,
+      // English: Hey I'm Akhil Rojana / My name is Akhil
+      /(?:hey\s+|hi\s+|hello\s+)?(?:i['’]m|i\s+am|myself|this\s+is)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)(?:\s+i\s+have|\s+i\s+studied|\s+and|\s+from|\s+my|,|\.|$)/i,
+      /(?:my\s+name\s+is)\s+([a-zA-Z]+(?:\s+[a-zA-Z]+)?)(?:\s+i\s+have|\s+i\s+am|\s+and|\s+from|,|\.|$)/i,
+      // Single standalone name input
+      /^([a-zA-Z\u0900-\u097F\u0B80-\u0BFF\u0C00-\u0C7F]{2,25})$/i
+    ];
+
+    for (const pattern of namePatterns) {
+      const match = transcript.match(pattern);
+      if (match && match[1]) {
+        let rawName = match[1].trim().replace(/[()]/g, '');
+
+        // Split into words and strip trailing stop words
+        const words = rawName.split(/\s+/).filter(w => !stopWords.includes(w.toLowerCase()));
+        if (words.length > 0) {
+          rawName = words.join(' ');
+          if (!stopWords.includes(rawName.toLowerCase()) && rawName.length >= 2 && !/^\d+$/.test(rawName)) {
+            if (/^[a-zA-Z\s]+$/.test(rawName)) {
+              extracted.name = rawName
+                .split(/\s+/)
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                .join(' ');
+            } else {
+              extracted.name = rawName;
+            }
+            break;
+          }
+        }
       }
     }
   }
 
-  // 2. Education Level Extraction
+  // 2. Age Extraction (Multilingual)
+  if (!extracted.age) {
+    const ageMatch =
+      transcript.match(/(?:age\s*(?:is)?\s*|வயது\s*|வயசு\s*|వయస్సు\s*|ఉम्र\s*|वय\s*)(\d{1,2})/i) ||
+      transcript.match(/(\d{1,2})\s*(?:years\s*old|yrs\s*old|age\s*old|years|yrs|வயது|வயசு|సంవత్సరాల\s*వయస్సు|साल\s*की\s*उम्र|वर्षे\s*वय)/i) ||
+      transcript.match(/(?:,\s*|\s+)(\d{1,2})(?:\s*,\s*|\s+age|\s+years|\.|$)/i);
+    if (ageMatch && ageMatch[1]) {
+      const parsedAge = parseInt(ageMatch[1], 10);
+      if (parsedAge >= 15 && parsedAge <= 65) {
+        extracted.age = parsedAge;
+      }
+    }
+  }
+
+  // 3. State & District Extraction (Multilingual)
+  // State Detection
+  if (text.includes('tamil nadu') || text.includes('tamilnadu') || text.includes('தமிழ்நாடு') || text.includes('தமிழ் நாடு') || text.includes('தமிழ்நாட்டிலிருந்து')) {
+    extracted.state = 'Tamil Nadu';
+  } else if (text.includes('andhra pradesh') || text.includes('andhra') || text.includes('ఆంధ్రప్రదేశ్') || text.includes('ఆంధ్ర')) {
+    extracted.state = 'Andhra Pradesh';
+  } else if (text.includes('telangana') || text.includes('తెలంగాణ') || text.includes('తెలంగాణ నుండి')) {
+    extracted.state = 'Telangana';
+  } else if (text.includes('uttar pradesh') || text.includes('up') || text.includes('उत्तर प्रदेश') || text.includes('यूपी')) {
+    extracted.state = 'Uttar Pradesh';
+  } else if (text.includes('bihar') || text.includes('बिहार')) {
+    extracted.state = 'Bihar';
+  } else if (text.includes('maharashtra') || text.includes('महाराष्ट्र')) {
+    extracted.state = 'Maharashtra';
+  } else if (text.includes('punjab') || text.includes('पंजाब')) {
+    extracted.state = 'Punjab';
+  } else if (text.includes('rajasthan') || text.includes('राजस्थान')) {
+    extracted.state = 'Rajasthan';
+  }
+
+  // District Detection (Tamil, Telugu, Hindi, Marathi, English)
+  const districtMap: Record<string, string> = {
+    // Tamil Nadu Districts
+    'தேனி': 'Theni',
+    'theni': 'Theni',
+    'மதுரை': 'Madurai',
+    'madurai': 'Madurai',
+    'சென்னை': 'Chennai',
+    'chennai': 'Chennai',
+    'கோயம்புத்தூர்': 'Coimbatore',
+    'கோவை': 'Coimbatore',
+    'coimbatore': 'Coimbatore',
+    'திருச்சி': 'Tiruchirappalli',
+    'trichy': 'Tiruchirappalli',
+    'சேலம்': 'Salem',
+    'salem': 'Salem',
+    'திண்டுக்கல்': 'Dindigul',
+    'dindigul': 'Dindigul',
+    'திருப்பூர்': 'Tiruppur',
+    'tiruppur': 'Tiruppur',
+    'தஞ்சாவூர்': 'Thanjavur',
+    'thanjavur': 'Thanjavur',
+    'திருநெல்வேலி': 'Tirunelveli',
+    'tirunelveli': 'Tirunelveli',
+    'வேலூர்': 'Vellore',
+    'vellore': 'Vellore',
+    'விழுப்புரம்': 'Villupuram',
+    'ஈரோடு': 'Erode',
+    'கடலூர்': 'Cuddalore',
+    'கன்னியாகுமரி': 'Kanyakumari',
+
+    // Andhra Pradesh & Telangana Districts
+    'విజయనగరం': 'Vizianagaram',
+    'vizianagaram': 'Vizianagaram',
+    'విశాఖపట్నం': 'Visakhapatnam',
+    'వైజాగ్': 'Visakhapatnam',
+    'visakhapatnam': 'Visakhapatnam',
+    'గుంటూరు': 'Guntur',
+    'guntur': 'Guntur',
+    'కృష్ణా': 'Krishna',
+    'విజయవాడ': 'Krishna',
+    'vijayawada': 'Krishna',
+    'కర్నూలు': 'Kurnool',
+    'kurnool': 'Kurnool',
+    'అనంతపురం': 'Anantapur',
+    'anantapur': 'Anantapur',
+    'వరంగల్': 'Warangal',
+    'warangal': 'Warangal',
+    'హైదరాబాద్': 'Hyderabad',
+    'hyderabad': 'Hyderabad',
+    'కరీంనగర్': 'Karimnagar',
+    'ఖమ్మం': 'Khammam',
+
+    // Uttar Pradesh & Bihar Districts
+    'वाराणसी': 'Varanasi',
+    'बनारस': 'Varanasi',
+    'varanasi': 'Varanasi',
+    'सीतापुर': 'Sitapur',
+    'sitapur': 'Sitapur',
+    'गया': 'Gaya',
+    'gaya': 'Gaya',
+    'पटना': 'Patna',
+    'patna': 'Patna',
+    'लखनऊ': 'Lucknow',
+    'lucknow': 'Lucknow',
+    'गोरखपुर': 'Gorakhpur',
+    'कानपुर': 'Kanpur',
+    'प्रयागराज': 'Prayagraj',
+    'इलाहाबाद': 'Prayagraj',
+    'आगरा': 'Agra',
+
+    // Maharashtra Districts
+    'सोलापूर': 'Solapur',
+    'solapur': 'Solapur',
+    'पुणे': 'Pune',
+    'pune': 'Pune',
+    'मुंबई': 'Mumbai',
+    'mumbai': 'Mumbai',
+    'नागपूर': 'Nagpur',
+    'nagpur': 'Nagpur',
+    'नाशिक': 'Nashik',
+    'nashik': 'Nashik',
+    'कोल्हापूर': 'Kolhapur'
+  };
+
+  for (const [kw, districtName] of Object.entries(districtMap)) {
+    if (text.includes(kw)) {
+      extracted.district = districtName;
+      if (!extracted.state) {
+        if (['Theni', 'Madurai', 'Chennai', 'Coimbatore', 'Tiruchirappalli', 'Salem', 'Dindigul', 'Tiruppur', 'Thanjavur', 'Tirunelveli', 'Vellore'].includes(districtName)) {
+          extracted.state = 'Tamil Nadu';
+        } else if (['Vizianagaram', 'Visakhapatnam', 'Guntur', 'Krishna', 'Kurnool', 'Anantapur'].includes(districtName)) {
+          extracted.state = 'Andhra Pradesh';
+        } else if (['Warangal', 'Hyderabad', 'Karimnagar', 'Khammam'].includes(districtName)) {
+          extracted.state = 'Telangana';
+        } else if (['Varanasi', 'Sitapur', 'Lucknow', 'Gorakhpur', 'Kanpur', 'Prayagraj', 'Agra'].includes(districtName)) {
+          extracted.state = 'Uttar Pradesh';
+        } else if (['Gaya', 'Patna'].includes(districtName)) {
+          extracted.state = 'Bihar';
+        } else if (['Solapur', 'Pune', 'Mumbai', 'Nagpur', 'Nashik', 'Kolhapur'].includes(districtName)) {
+          extracted.state = 'Maharashtra';
+        }
+      }
+      break;
+    }
+  }
+
+  // 4. Education Level Extraction (Multilingual)
   if (
     text.includes('10th') || text.includes('tenth') || text.includes('10 pass') || text.includes('10th standard') ||
-    text.includes('10 वीं') || text.includes('10वीं') || text.includes('10వ') || text.includes('10 ஆம்') || text.includes('10 वी')
+    text.includes('10வது') || text.includes('10-வது') || text.includes('பத்தாம் வகுப்பு') || text.includes('பத்தாவது') || text.includes('10 ஆம்') ||
+    text.includes('10వ తరగతి') || text.includes('10వ') || text.includes('టెన్త్') ||
+    text.includes('10वीं') || text.includes('10 वीं') || text.includes('दसवीं') ||
+    text.includes('10वी') || text.includes('दहावी')
   ) {
     extracted.education = '10th Pass';
   } else if (
     text.includes('12th') || text.includes('twelfth') || text.includes('12 pass') || text.includes('12th standard') ||
-    text.includes('inter') || text.includes('intermediate') || text.includes('higher secondary') ||
-    text.includes('12 वीं') || text.includes('12वीं') || text.includes('12వ') || text.includes('12 ஆம்') || text.includes('12 वी')
+    text.includes('12வது') || text.includes('12-வது') || text.includes('பன்னிரண்டாம் வகுப்பு') || text.includes('+2') || text.includes('பிளஸ் 2') ||
+    text.includes('12వ తరగతి') || text.includes('ఇంటర్') || text.includes('ఇంటర్మీడియట్') || text.includes('12వ') ||
+    text.includes('12वीं') || text.includes('12 वीं') || text.includes('बारहवीं') || text.includes('इंटर') ||
+    text.includes('12वी') || text.includes('बारावी')
   ) {
     extracted.education = '12th Pass';
   } else if (
     text.includes('8th') || text.includes('eighth') || text.includes('8 pass') || text.includes('8th standard') ||
-    text.includes('8 वीं') || text.includes('8वीं') || text.includes('8వ') || text.includes('8 ஆம்') || text.includes('8 वी')
+    text.includes('8வது') || text.includes('8-வது') || text.includes('எட்டாம் வகுப்பு') || text.includes('எட்டாவது') ||
+    text.includes('8వ తరగతి') || text.includes('8వ') ||
+    text.includes('8वीं') || text.includes('8 वीं') || text.includes('आठवीं') ||
+    text.includes('8वी') || text.includes('आठवी')
   ) {
     extracted.education = '8th Pass';
-  } else if (text.includes('diploma') || text.includes('iti') || text.includes('polytechnic')) {
+  } else if (
+    text.includes('diploma') || text.includes('iti') || text.includes('polytechnic') ||
+    text.includes('ஐடிஐ') || text.includes('டிப்ளமோ') || text.includes('ஐ.டி.ஐ') ||
+    text.includes('ఐటీఐ') || text.includes('డిప్లొమా') ||
+    text.includes('आईटीआई') || text.includes('डिप्लोमा') ||
+    text.includes('आयटीआय')
+  ) {
     extracted.education = 'ITI / Diploma';
-  } else if (text.includes('graduate') || text.includes('degree') || text.includes('btech') || text.includes('bsc') || text.includes('bcom') || text.includes('ba')) {
+  } else if (
+    text.includes('graduate') || text.includes('degree') || text.includes('btech') || text.includes('bsc') || text.includes('bcom') || text.includes('ba') ||
+    text.includes('பட்டப்படிப்பு') || text.includes('டிகிரி') || text.includes('கிராஜுவேட்') ||
+    text.includes('డిగ్రీ') || text.includes('గ్రాడ్యుయేట్') || text.includes('బీటెక్') ||
+    text.includes('ग्रेजुएट') || text.includes('डिग्री') || text.includes('स्नातक') ||
+    text.includes('पदवी') || text.includes('पदवीधर')
+  ) {
     extracted.education = 'Graduate & Above';
-  } else if (text.includes('below 8th') || text.includes('5th') || text.includes('primary') || text.includes('uneducated')) {
+  } else if (
+    text.includes('below 8th') || text.includes('5th') || text.includes('primary') || text.includes('uneducated') ||
+    text.includes('படிப்பு இல்லை') || text.includes('5வது') || text.includes('చదువుకోలేదు') || text.includes('5వ') ||
+    text.includes('अनपढ़') || text.includes('5वीं')
+  ) {
     extracted.education = 'Below 8th';
   }
 
-  // 3. Work Experience Extraction
-  const expMatch = transcript.match(/(\d+)\s*(?:years?|yrs?)(?:\s*of)?\s*(?:work\s*)?experience/i) ||
-                   transcript.match(/(?:experience\s*of\s*)(\d+)\s*(?:years?|yrs?)/i) ||
-                   transcript.match(/(\d+)\s*(?:साल|saal|वर्ष)\s*(?:का\s*)?(?:अनुभव|anubhav)/i) ||
-                   transcript.match(/(\d+)\s*(?:సంవత్సరాల|samvatsarala)\s*(?:అనుభవం|anubhavam)/i);
-  if (expMatch && expMatch[1]) {
-    extracted.workExperienceYears = parseInt(expMatch[1], 10);
+  // 5. Work Experience Extraction (Multilingual Numbers & Words)
+  let expYears: number | null = null;
+
+  // Check Tamil words: டூ இயர்ஸ் (2), ஒன் இயர் (1), திரீ இயர்ஸ் (3), போர் இயர்ஸ் (4), 5 இயர்ஸ்
+  if (text.includes('டூ இயர்ஸ்') || text.includes('டூ இயர்') || text.includes('ரெண்டு வருஷம்') || text.includes('2 வருடம்') || text.includes('2 இயர்ஸ்') || text.includes('2 வருட')) {
+    expYears = 2;
+  } else if (text.includes('ஒன் இயர்') || text.includes('ஒரு வருடம்') || text.includes('1 வருடம்') || text.includes('1 இயர்')) {
+    expYears = 1;
+  } else if (text.includes('திரீ இயர்ஸ்') || text.includes('மூன்று வருடம்') || text.includes('3 வருடம்') || text.includes('3 இயர்ஸ்')) {
+    expYears = 3;
+  } else if (text.includes('போர் இயர்ஸ்') || text.includes('நான்கு வருடம்') || text.includes('4 வருடம்') || text.includes('4 இயர்ஸ்')) {
+    expYears = 4;
+  } else if (text.includes('பைவ் இயர்ஸ்') || text.includes('ஐந்து வருடம்') || text.includes('5 வருடம்') || text.includes('5 இயர்ஸ்')) {
+    expYears = 5;
   }
 
-  // 4. Multilingual Skills Extraction & Fresh Skill Set Mapping
+  // Check Telugu words
+  if (!expYears) {
+    if (text.includes('రెండు సంవత్సరాల') || text.includes('2 సంవత్సరాల') || text.includes('2 ఇయర్స్')) {
+      expYears = 2;
+    } else if (text.includes('ఒక సంవత్సరం') || text.includes('1 సంవత్సరం') || text.includes('1 ఇయర్')) {
+      expYears = 1;
+    } else if (text.includes('మూడు సంవత్సరాల') || text.includes('3 సంవత్సరాల') || text.includes('3 ఇయర్స్')) {
+      expYears = 3;
+    } else if (text.includes('నాలుగు సంవత్సరాల') || text.includes('4 సంవత్సరాల')) {
+      expYears = 4;
+    } else if (text.includes('ఐదు సంవత్సరాల') || text.includes('5 సంవత్సరాల')) {
+      expYears = 5;
+    }
+  }
+
+  // Check Hindi & Marathi words
+  if (!expYears) {
+    if (text.includes('दो साल') || text.includes('2 साल') || text.includes('दोन वर्षे') || text.includes('2 वर्षे')) {
+      expYears = 2;
+    } else if (text.includes('एक साल') || text.includes('1 साल') || text.includes('एक वर्ष') || text.includes('1 वर्ष')) {
+      expYears = 1;
+    } else if (text.includes('तीन साल') || text.includes('3 साल') || text.includes('तीन वर्षे') || text.includes('3 वर्षे')) {
+      expYears = 3;
+    } else if (text.includes('चार साल') || text.includes('4 साल') || text.includes('चार वर्षे')) {
+      expYears = 4;
+    } else if (text.includes('पांच साल') || text.includes('5 साल') || text.includes('पाच वर्षे')) {
+      expYears = 5;
+    }
+  }
+
+  // Regex fallback
+  if (!expYears) {
+    const expMatch =
+      transcript.match(/(\d+)\s*(?:years?|yrs?|இயர்ஸ்|வருட|வருஷம்|సంవత్సరాల|साल|वर्षे)/i) ||
+      transcript.match(/(?:experience\s*of\s*|அனுபவம்\s*|అనుభవం\s*|अनुभव\s*)(\d+)/i);
+    if (expMatch && expMatch[1]) {
+      expYears = parseInt(expMatch[1], 10);
+    }
+  }
+
+  if (expYears !== null && expYears >= 0 && expYears <= 40) {
+    extracted.workExperienceYears = expYears;
+  }
+
+  // 6. Multilingual Skills Extraction
   const newlyDetectedSkills: string[] = [];
 
-  if (text.includes('ms word') || text.includes('word document') || text.includes('ms-word') || text.includes('msword')) {
-    newlyDetectedSkills.push('MS Word');
-  }
-  if (text.includes('excel') || text.includes('ms excel') || text.includes('spreadsheet') || text.includes('msexcel')) {
-    newlyDetectedSkills.push('MS Excel');
-  }
-  if (text.includes('ms office') || text.includes('office')) {
-    if (!newlyDetectedSkills.includes('MS Office')) newlyDetectedSkills.push('MS Office');
-  }
-  if (text.includes('typing') || text.includes('data entry') || text.includes('data typing') || text.includes('టైపింగ్')) {
-    newlyDetectedSkills.push('Data Entry Typing');
-  }
+  // Plumbing
   if (
-    (text.includes('computer') || text.includes('कंप्यूटर') || text.includes('కంప్యూటర్')) &&
-    !text.includes('no basics of computer') && !text.includes('no computer')
+    text.includes('ப்ளம்பிங்') || text.includes('பிளம்பிங்') || text.includes('குழாய் வேலை') ||
+    text.includes('ప్లంబింగ్') || text.includes('నల్లా పని') ||
+    text.includes('प्लंबिंग') || text.includes('नल फिटिंग') || text.includes('प्लंबर') ||
+    text.includes('plumbing') || text.includes('plumber')
   ) {
-    if (!newlyDetectedSkills.includes('Basic Computers')) newlyDetectedSkills.push('Basic Computers');
-  }
-  if (text.includes('tailor') || text.includes('stitch') || text.includes('sewing') || text.includes('सिलाई') || text.includes('कुట్టు') || text.includes('தையல்')) {
-    newlyDetectedSkills.push('Tailoring & Stitching');
-    newlyDetectedSkills.push('Sewing Machine Operation');
-  }
-  if (text.includes('electric') || text.includes('wiring') || text.includes('बिजली') || text.includes('వైరింగ్') || text.includes('மின்சாரம்')) {
-    newlyDetectedSkills.push('House Wiring');
-    newlyDetectedSkills.push('Electrical Testing');
-  }
-  if (text.includes('solar') || text.includes('सोलर') || text.includes('suryamitra')) {
-    newlyDetectedSkills.push('Solar Panel Installation');
-  }
-  if (text.includes('mobile') || text.includes('phone') || text.includes('మోబైల్') || text.includes('ఫోన్')) {
-    newlyDetectedSkills.push('Mobile Phone Hardware Repair');
-  }
-  if (text.includes('patient') || text.includes('hospital') || text.includes('nurse') || text.includes('gda') || text.includes('ward')) {
-    newlyDetectedSkills.push('Patient Care (GDA)');
-    newlyDetectedSkills.push('Vital Signs Monitoring');
-  }
-  if (text.includes('poultry') || text.includes('chicken') || text.includes('मुर्गी') || text.includes('కోళ్ళ')) {
-    newlyDetectedSkills.push('Backyard Poultry Farming');
-  }
-  if (text.includes('farm') || text.includes('agriculture') || text.includes('खेती') || text.includes('వ్యవసాయం') || text.includes('విவசாயம்')) {
-    newlyDetectedSkills.push('Organic Farming');
-  }
-  if (text.includes('mechanic') || text.includes('two wheeler') || text.includes('bike') || text.includes('मैकेनिक') || text.includes('మెకానిక్')) {
-    newlyDetectedSkills.push('Two-Wheeler Mechanic');
-  }
-  if (text.includes('beauty') || text.includes('makeup') || text.includes('parlour') || text.includes('salon') || text.includes('ब्यूटी')) {
-    newlyDetectedSkills.push('Beauty Parlour & Makeup');
-  }
-  if (text.includes('plumb') || text.includes('pipe') || text.includes('नल') || text.includes('ప్లంబర్')) {
     newlyDetectedSkills.push('Plumbing & Pipe Fitting');
   }
 
-  // When speech mentions specific skills, replace default placeholder demo skills
+  // Tailoring & Stitching
+  if (
+    text.includes('தையல்') || text.includes('டைலரிங்') || text.includes('துணி தைப்பது') || text.includes('ஆடை வடிவமைப்பு') ||
+    text.includes('కుట్టుపని') || text.includes('టైలరింగ్') || text.includes('కుట్టు') ||
+    text.includes('सिलाई') || text.includes('कटाई') || text.includes('टेलरिंग') || text.includes('दर्जी') ||
+    text.includes('शिवणकाम') || text.includes('टेलरिंग') ||
+    text.includes('tailor') || text.includes('stitch') || text.includes('sewing')
+  ) {
+    newlyDetectedSkills.push('Tailoring & Garment Stitching');
+    newlyDetectedSkills.push('Sewing Machine Operation');
+  }
+
+  // Electrical & House Wiring
+  if (
+    text.includes('எலக்ட்ரீசியன்') || text.includes('வயரிங்') || text.includes('மின்சார வேலை') || text.includes('மின்சாரம்') ||
+    text.includes('ఎలక్ట్రీషియన్') || text.includes('వైరింగ్') || text.includes('కరెంట్ పని') ||
+    text.includes('इलेक्ट्रीशियन') || text.includes('बिजली वायरिंग') || text.includes('बिजली का काम') ||
+    text.includes('वायरिंग') || text.includes('इलेक्ट्रिकल') ||
+    text.includes('electric') || text.includes('wiring')
+  ) {
+    newlyDetectedSkills.push('House Wiring & Electricals');
+    newlyDetectedSkills.push('Electrical Testing');
+  }
+
+  // Solar Rooftop Installation
+  if (
+    text.includes('சோலார்') || text.includes('சூரிய சக்தி') || text.includes('சூரிய ஒளி') ||
+    text.includes('సోలార్') || text.includes('సూర్యమిత్ర') || text.includes('సౌర విద్యుత్') ||
+    text.includes('सोलर') || text.includes('सूर्यमित्र') || text.includes('सोलर पैनल') ||
+    text.includes('solar') || text.includes('suryamitra')
+  ) {
+    newlyDetectedSkills.push('Solar Panel Installation');
+  }
+
+  // Mobile Hardware Repair
+  if (
+    text.includes('மொபைல் சர்வீஸ்') || text.includes('செல்போன் ரிப்பேர்') || text.includes('மொபைல் ரிப்பேர்') ||
+    text.includes('మొబైల్ రిపేరింగ్') || text.includes('ఫోన్ సర్వీసింగ్') ||
+    text.includes('मोबाइल रिपेयरिंग') || text.includes('फोन सुधारना') ||
+    text.includes('मोबाईल रिपेअरिंग') ||
+    text.includes('mobile repair') || text.includes('phone hardware')
+  ) {
+    newlyDetectedSkills.push('Mobile Phone Hardware Repair');
+  }
+
+  // Computers & Data Entry & MS Office
+  if (text.includes('ms word') || text.includes('எம்எஸ் வேர்ட்') || text.includes('वर्ड')) {
+    newlyDetectedSkills.push('MS Word');
+  }
+  if (text.includes('excel') || text.includes('ms excel') || text.includes('எக்செல்') || text.includes('ఎక్సెల్') || text.includes('एक्सेल')) {
+    newlyDetectedSkills.push('MS Excel');
+  }
+  if (
+    text.includes('typing') || text.includes('data entry') ||
+    text.includes('தட்டச்சு') || text.includes('டைப்பிங்') || text.includes('டேட்டா என்ட்ரி') ||
+    text.includes('టైపింగ్') || text.includes('డేటా ఎంట్రీ') ||
+    text.includes('टाइपिंग') || text.includes('डाटा एंट्री')
+  ) {
+    newlyDetectedSkills.push('Data Entry Typing');
+  }
+  if (
+    (text.includes('computer') || text.includes('கம்ப்யூட்டர்') || text.includes('கணினி') || text.includes('కంప్యూటర్') || text.includes('कंप्यूटर') || text.includes('संगणक')) &&
+    !text.includes('no basics of computer') && !text.includes('படிப்பு இல்லை')
+  ) {
+    if (!newlyDetectedSkills.includes('Basic Computers')) newlyDetectedSkills.push('Basic Computers');
+  }
+
+  // Healthcare / GDA
+  if (
+    text.includes('நர்சிங்') || text.includes('மருத்துவமனை வேலை') || text.includes('நோயாளி பராமரிப்பு') ||
+    text.includes('నర్సింగ్') || text.includes('ఆసుపత్రి పని') || text.includes('రోగుల సంరక్షణ') ||
+    text.includes('नर्सिंग') || text.includes('अस्पताल सहायक') || text.includes('रोगी देखभाल') ||
+    text.includes('patient care') || text.includes('nurse') || text.includes('hospital') || text.includes('gda')
+  ) {
+    newlyDetectedSkills.push('Patient Care (GDA)');
+    newlyDetectedSkills.push('Vital Signs Monitoring');
+  }
+
+  // Poultry & Farming
+  if (
+    text.includes('கோழி பண்ணை') || text.includes('நாட்டு கோழி') || text.includes('கோழி வளர்ப்பு') ||
+    text.includes('కోళ్ళ పెంపకం') || text.includes('నాటు కోళ్ళు') ||
+    text.includes('मुर्गी पालन') || text.includes('पोल्ट्री') ||
+    text.includes('कुक्कुटपालन') ||
+    text.includes('poultry') || text.includes('chicken farming')
+  ) {
+    newlyDetectedSkills.push('Backyard Poultry Farming');
+  }
+  if (
+    text.includes('விவசாயம்') || text.includes('இயற்கை விவசாயம்') ||
+    text.includes('వ్యవసాయం') || text.includes('సేంద్రీయ వ్యవసాయం') ||
+    text.includes('खेती') || text.includes('जैविक खेती') ||
+    text.includes('शेती') || text.includes('सेंद्रिय शेती') ||
+    text.includes('organic farming') || text.includes('agriculture')
+  ) {
+    newlyDetectedSkills.push('Organic Farming');
+  }
+
+  // Two-Wheeler Repair
+  if (
+    text.includes('டூ வீலர் மெக்கானிக்') || text.includes('பைக் சர்வீஸ்') || text.includes('இருசக்கர வாகனம்') ||
+    text.includes('టూ వీలర్ మెకానిక్') || text.includes('బైక్ రిపేర్') ||
+    text.includes('टू-व्हीलर मैकेनिक') || text.includes('बाइक रिपेयर') ||
+    text.includes('दुचाकी मेकॅनिक') ||
+    text.includes('two wheeler') || text.includes('bike mechanic')
+  ) {
+    newlyDetectedSkills.push('Two-Wheeler Mechanic');
+  }
+
+  // Beauty Parlour
+  if (
+    text.includes('பியூட்டி பார்லர்') || text.includes('மேக்கப்') || text.includes('மணப்பெண் அலங்காரம்') ||
+    text.includes('బ్యూటీ పార్లర్') || text.includes('మేకప్') ||
+    text.includes('ब्यूटी पार्लर') || text.includes('मेकअप') ||
+    text.includes('ब्युटी पार्लर') ||
+    text.includes('beauty parlour') || text.includes('bridal makeup')
+  ) {
+    newlyDetectedSkills.push('Beauty Parlour & Makeup');
+  }
+
+  // Update existing skills if detected
   if (newlyDetectedSkills.length > 0) {
     extracted.existingSkills = newlyDetectedSkills;
   }
 
-  // 5. Preferred Livelihood, Occupation & Goal Extraction
+  // 7. Preferred Livelihood & Career Goal Extraction (Multilingual)
   if (
-    text.includes('job') || text.includes('looking for a job') || text.includes('want a job') || text.includes('seeking a job') ||
-    text.includes('company') || text.includes('salary') || text.includes('नौकरी') || text.includes('ఉద్యోగం') || text.includes('வேலை')
+    text.includes('job') || text.includes('ஜாப்') || text.includes('வேலை') || text.includes('சம்பள வேலை') ||
+    text.includes('ఉద్యోగం') || text.includes('జాబ్') || text.includes('నౌకరీ') ||
+    text.includes('नौकरी') || text.includes('जॉब') || text.includes('वेतन') ||
+    text.includes('नोकरी') || text.includes('कामावर')
   ) {
     extracted.preferredLivelihood = 'Job';
 
-    if (newlyDetectedSkills.some(s => s.includes('Word') || s.includes('Excel') || s.includes('Office') || s.includes('Data Entry') || s.includes('Computer'))) {
+    if (newlyDetectedSkills.some(s => s.includes('Plumbing'))) {
+      extracted.currentOccupation = 'Plumber Technician';
+      extracted.careerGoal = 'Secure a certified plumbing technician job in commercial construction or facility management.';
+      extracted.interests = ['Plumbing Systems', 'Sanitary Installations'];
+    } else if (newlyDetectedSkills.some(s => s.includes('Word') || s.includes('Excel') || s.includes('Data Entry') || s.includes('Computers'))) {
       extracted.currentOccupation = 'Data Entry Operator / Office Assistant';
       extracted.careerGoal = `Secure a certified job as Domestic Data Entry Operator (DEO) with ${newlyDetectedSkills.join(' & ')} proficiency.`;
       extracted.interests = ['Office Automation', 'Data Digitization'];
@@ -408,14 +755,24 @@ export function extractProfileFromText(transcript: string, currentProfile?: Part
       extracted.currentOccupation = 'Solar Array Installation Assistant';
       extracted.careerGoal = 'Secure employment in a commercial solar power plant with NSQF Suryamitra certification.';
       extracted.interests = ['Renewable Energy', 'Solar Maintenance'];
+    } else if (newlyDetectedSkills.some(s => s.includes('Two-Wheeler'))) {
+      extracted.currentOccupation = 'Automotive Service Assistant';
+      extracted.careerGoal = 'Secure a salaried mechanic job in an authorized two-wheeler dealership service center.';
     }
   } else if (
     text.includes('self') || text.includes('business') || text.includes('own shop') || text.includes('toolkit') ||
-    text.includes('दुकान') || text.includes('स्वरोजगार') || text.includes('స్వయం ఉపాధి') || text.includes('சுயதொழில்')
+    text.includes('சுயதொழில்') || text.includes('சொந்த தொழில்') || text.includes('டூல்கிட்') || text.includes('மானியம்') ||
+    text.includes('స్వయం ఉపాధి') || text.includes('సొంత వ్యాపారం') || text.includes('టూల్‌కిట్') ||
+    text.includes('स्वरोजगार') || text.includes('अपनी दुकान') || text.includes('टूलकिट') ||
+    text.includes('स्वयंरोजगार') || text.includes('स्वतःचा व्यवसाय')
   ) {
     extracted.preferredLivelihood = 'Self-employment';
 
-    if (newlyDetectedSkills.some(s => s.includes('Tailor'))) {
+    if (newlyDetectedSkills.some(s => s.includes('Plumbing'))) {
+      extracted.currentOccupation = 'Independent Plumbing Service';
+      extracted.careerGoal = 'Establish an independent plumbing service enterprise with PM-AJAY plumbing toolkit grant.';
+      extracted.interests = ['Sanitary Contracting', 'Plumbing Enterprise'];
+    } else if (newlyDetectedSkills.some(s => s.includes('Tailor'))) {
       extracted.currentOccupation = 'Custom Tailoring & Stitching';
       extracted.careerGoal = 'Establish a home-based garment stitching unit with PM-AJAY motorized sewing machine toolkit grant.';
       extracted.interests = ['Garment Construction', 'Boutique Setup'];
@@ -436,5 +793,6 @@ export function extractProfileFromText(transcript: string, currentProfile?: Part
 
   return extracted;
 }
+
 
 

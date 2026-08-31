@@ -239,7 +239,20 @@ function MainAppContent() {
             </div>
 
             <button
-              onClick={() => setCurrentView('voice')}
+              onClick={() => {
+                if (pendingProfile.name === 'Ravi Kumar') {
+                  setPendingProfile({
+                    ...pendingProfile,
+                    name: '',
+                    education: undefined as any,
+                    existingSkills: [],
+                    district: '',
+                    state: '',
+                    preferredLivelihood: undefined as any
+                  });
+                }
+                setCurrentView('voice');
+              }}
               className="flex items-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3.5 py-2 text-xs font-bold transition-all shadow-md"
             >
               <Mic size={14} />
@@ -253,7 +266,20 @@ function MainAppContent() {
       <main className="flex-1">
         {currentView === 'landing' && (
           <LandingPage
-            onStartVoice={() => setCurrentView('voice')}
+            onStartVoice={() => {
+              if (pendingProfile.name === 'Ravi Kumar') {
+                setPendingProfile({
+                  ...pendingProfile,
+                  name: '',
+                  education: undefined as any,
+                  existingSkills: [],
+                  district: '',
+                  state: '',
+                  preferredLivelihood: undefined as any
+                });
+              }
+              setCurrentView('voice');
+            }}
             onOpenAdmin={() => setCurrentView('admin')}
             onOpenForm={() => setCurrentView('manual')}
             onLoadDemo={handleSelectDemoProfile}
@@ -263,8 +289,20 @@ function MainAppContent() {
         {currentView === 'onboard-choice' && (
           <ProfileOnboardingChoice
             onSelectMethod={(method) => {
-              if (method === 'voice') setCurrentView('voice');
-              else if (method === 'text') setCurrentView('text');
+              if (method === 'voice') {
+                if (pendingProfile.name === 'Ravi Kumar') {
+                  setPendingProfile({
+                    ...pendingProfile,
+                    name: '',
+                    education: undefined as any,
+                    existingSkills: [],
+                    district: '',
+                    state: '',
+                    preferredLivelihood: undefined as any
+                  });
+                }
+                setCurrentView('voice');
+              } else if (method === 'text') setCurrentView('text');
               else setCurrentView('manual');
             }}
           />

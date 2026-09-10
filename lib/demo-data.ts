@@ -2,6 +2,29 @@ import { BeneficiaryProfile } from './types';
 
 export const DEMO_BENEFICIARIES: { id: string; label: string; tag: string; profile: BeneficiaryProfile }[] = [
   {
+    id: 'demo-theni',
+    label: 'Demo Beneficiary (Theni Tailoring)',
+    tag: '10th Pass · Theni TN · Tailoring & Self-Employment',
+    profile: {
+      id: 'demo-theni',
+      beneficiaryId: 'SC-AJAY-2026-TN01',
+      name: 'Demo Beneficiary',
+      age: 25,
+      gender: 'Female',
+      state: 'Tamil Nadu',
+      district: 'Theni',
+      areaType: 'Rural',
+      education: '10th Pass',
+      currentOccupation: 'Local Stitching Worker',
+      existingSkills: ['Tailoring', 'Sewing', 'Hand Stitching', 'Garment Finishing'],
+      workExperienceYears: 2,
+      monthlyIncome: '₹4,500 – ₹7,500',
+      preferredLivelihood: 'Self-employment',
+      interests: ['Garment Design', 'Boutique Setup', 'Uniform Stitching'],
+      careerGoal: 'Establish an independent tailoring & boutique unit with PM-AJAY GIA toolkit support'
+    }
+  },
+  {
     id: 'demo-ravi',
     label: 'Ravi Kumar (Rural Tailor)',
     tag: '10th Pass · Rural AP · Self-Employment',

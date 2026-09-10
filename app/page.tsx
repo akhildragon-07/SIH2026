@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { ToastProvider, useToast } from '@/components/ui/ToastProvider';
 import LandingPage from '@/components/LandingPage';
 import DemoBeneficiarySelector from '@/components/DemoBeneficiarySelector';
 import ProfileOnboardingChoice from '@/components/ProfileOnboardingChoice';
@@ -9,21 +10,53 @@ import VoiceAssistant from '@/components/VoiceAssistant';
 import TextOnboardingBot from '@/components/TextOnboardingBot';
 import BeneficiaryOnboarding from '@/components/BeneficiaryOnboarding';
 import ProfileConfirmation from '@/components/ProfileConfirmation';
+import AIAnalysisTransition from '@/components/AIAnalysisTransition';
 import BeneficiaryDashboard from '@/components/BeneficiaryDashboard';
 import BeneficiaryAccountCard from '@/components/BeneficiaryAccountCard';
 import SkillGapAnalysis from '@/components/SkillGapAnalysis';
 import NSQFRecommendations from '@/components/NSQFRecommendations';
 import LivelihoodRecommendations from '@/components/LivelihoodRecommendations';
+import LivelihoodStatusTimeline from '@/components/LivelihoodStatusTimeline';
 import CareerRoadmap from '@/components/CareerRoadmap';
 import AdminDashboard from '@/components/AdminDashboard';
+import OpportunityMap from '@/components/OpportunityMap';
+import MobileBottomNav from '@/components/MobileBottomNav';
 
 import { BeneficiaryProfile, AnalysisResponse } from '@/lib/types';
-import { Landmark, Mic, UserCheck, GraduationCap, Briefcase, BarChart3, Sparkles, LayoutDashboard, ShieldCheck, CheckCircle2, CreditCard, ChevronDown } from 'lucide-react';
+import {
+  Landmark,
+  Mic,
+  UserCheck,
+  GraduationCap,
+  Briefcase,
+  BarChart3,
+  Sparkles,
+  LayoutDashboard,
+  ShieldCheck,
+  CheckCircle2,
+  CreditCard,
+  ChevronDown,
+  MapPin,
+  Clock
+} from 'lucide-react';
 
-type ViewMode = 'landing' | 'onboard-choice' | 'voice' | 'text' | 'manual' | 'confirm' | 'card' | 'dashboard' | 'results' | 'admin';
+type ViewMode =
+  | 'landing'
+  | 'onboard-choice'
+  | 'voice'
+  | 'text'
+  | 'manual'
+  | 'confirm'
+  | 'transition'
+  | 'card'
+  | 'dashboard'
+  | 'results'
+  | 'opportunities'
+  | 'admin';
 
 function MainAppContent() {
   const { profile, updateProfile, registeredBeneficiaries, switchBeneficiary } = useAuth();
+  const { showToast } = useToast();
   const [currentView, setCurrentView] = useState<ViewMode>('landing');
   const [activeDemoId, setActiveDemoId] = useState<string | undefined>('demo-ravi');
 
@@ -31,7 +64,9 @@ function MainAppContent() {
   const [pendingProfile, setPendingProfile] = useState<BeneficiaryProfile>(profile);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [activeResultsTab, setActiveResultsTab] = useState<'nsqf' | 'livelihood' | 'roadmap' | 'gap'>('nsqf');
+  const [activeResultsTab, setActiveResultsTab] = useState<
+    'nsqf' | 'opportunities' | 'livelihood' | 'roadmap' | 'gap' | 'timeline'
+  >('nsqf');
   const [showAccountDropdown, setShowAccountDropdown] = useState<boolean>(false);
 
   const fetchAnalysis = async (profileToAnalyze: BeneficiaryProfile) => {
@@ -64,6 +99,11 @@ function MainAppContent() {
     setActiveDemoId(demoProf.id);
     fetchAnalysis(demoProf);
     setCurrentView('results');
+    showToast({
+      type: 'info',
+      title: `Loaded ${demoProf.name}`,
+      description: `Target District: ${demoProf.district}, ${demoProf.state}`
+    });
   };
 
   // Step 1: User completes Voice/Text/Manual -> goes to Confirmation Step
@@ -71,23 +111,32 @@ function MainAppContent() {
     const fullPending: BeneficiaryProfile = {
       ...profile,
       ...extracted,
-      name: extracted.name || profile.name || 'Ravi Kumar',
-      education: extracted.education || profile.education || '10th Pass',
-      existingSkills: extracted.existingSkills && extracted.existingSkills.length > 0 ? extracted.existingSkills : ['Tailoring', 'Sewing', 'Stitching']
+      name: extracted.name || '',
+      education: extracted.education || '10th Pass',
+      existingSkills: extracted.existingSkills && extracted.existingSkills.length > 0 ? extracted.existingSkills : []
     };
     setPendingProfile(fullPending);
     setCurrentView('confirm');
   };
 
-  // Step 2: User confirms profile on "Here is what we understood about you" page
+  // Step 2: User confirms profile -> triggers animated AI analysis transition
   const handleConfirmProfile = () => {
     updateProfile(pendingProfile);
     fetchAnalysis(pendingProfile);
+    setCurrentView('transition');
+  };
+
+  const handleAnalysisTransitionComplete = () => {
+    showToast({
+      type: 'ai',
+      title: 'NSQF Alignment & Opportunities Mapped',
+      description: `Personalized PM-AJAY plan generated for ${profile.name}.`
+    });
     setCurrentView('card');
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-16 md:pb-0">
       {/* Hackathon Demo Preset Bar */}
       <DemoBeneficiarySelector
         onSelectProfile={handleSelectDemoProfile}
@@ -99,7 +148,7 @@ function MainAppContent() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
           <button
             onClick={() => setCurrentView('landing')}
-            className="flex items-center gap-3 text-left group"
+            className="flex items-center gap-3 text-left group cursor-pointer"
           >
             <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-slate-950 font-bold shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
               <Landmark size={20} />
@@ -121,7 +170,7 @@ function MainAppContent() {
           <nav className="hidden md:flex items-center gap-1.5 text-xs font-bold">
             <button
               onClick={() => setCurrentView('landing')}
-              className={`px-3.5 py-2 rounded-xl transition-all ${
+              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
                 currentView === 'landing' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -130,8 +179,11 @@ function MainAppContent() {
 
             <button
               onClick={() => setCurrentView('onboard-choice')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all ${
-                currentView === 'onboard-choice' || currentView === 'voice' || currentView === 'text' || currentView === 'manual'
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+                currentView === 'onboard-choice' ||
+                currentView === 'voice' ||
+                currentView === 'text' ||
+                currentView === 'manual'
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -142,7 +194,7 @@ function MainAppContent() {
 
             <button
               onClick={() => setCurrentView('card')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
                 currentView === 'card' ? 'bg-slate-800 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -152,7 +204,7 @@ function MainAppContent() {
 
             <button
               onClick={() => setCurrentView('dashboard')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
                 currentView === 'dashboard' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -162,8 +214,8 @@ function MainAppContent() {
 
             <button
               onClick={() => setCurrentView('results')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all ${
-                currentView === 'results' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+                currentView === 'results' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <GraduationCap size={14} />
@@ -171,8 +223,20 @@ function MainAppContent() {
             </button>
 
             <button
+              onClick={() => setCurrentView('opportunities')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+                currentView === 'opportunities'
+                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <MapPin size={14} />
+              <span>Opportunity Map</span>
+            </button>
+
+            <button
               onClick={() => setCurrentView('admin')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
                 currentView === 'admin' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -186,7 +250,7 @@ function MainAppContent() {
             <div className="relative">
               <button
                 onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-                className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-slate-700"
+                className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-slate-700 cursor-pointer"
               >
                 <span className="size-2 rounded-full bg-emerald-400" />
                 <span className="max-w-[100px] truncate">{profile.name}</span>
@@ -194,7 +258,7 @@ function MainAppContent() {
               </button>
 
               {showAccountDropdown && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-2xl z-50">
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
                   <div className="p-2 border-b border-slate-800 mb-1">
                     <p className="text-xs font-bold text-slate-200">{profile.name}</p>
                     <p className="text-[11px] font-mono text-emerald-400">{profile.beneficiaryId || 'SC-AJAY-2026-1001'}</p>
@@ -209,11 +273,16 @@ function MainAppContent() {
                       <button
                         key={b.id || b.beneficiaryId}
                         onClick={() => {
-                          switchBeneficiary(b.beneficiaryId || b.id);
+                          switchBeneficiary(b.beneficiaryId || b.id || '');
                           setShowAccountDropdown(false);
+                          showToast({
+                            type: 'info',
+                            title: `Switched to ${b.name}`,
+                            description: `ID: ${b.beneficiaryId}`
+                          });
                           setCurrentView('card');
                         }}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
+                        className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
                           b.beneficiaryId === profile.beneficiaryId ? 'bg-emerald-500/10 text-emerald-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
                         }`}
                       >
@@ -229,7 +298,7 @@ function MainAppContent() {
                         setShowAccountDropdown(false);
                         setCurrentView('manual');
                       }}
-                      className="w-full text-center py-2 text-xs font-bold text-emerald-400 hover:text-emerald-300"
+                      className="w-full text-center py-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 cursor-pointer"
                     >
                       + Create New Account
                     </button>
@@ -240,20 +309,25 @@ function MainAppContent() {
 
             <button
               onClick={() => {
-                if (pendingProfile.name === 'Ravi Kumar') {
-                  setPendingProfile({
-                    ...pendingProfile,
-                    name: '',
-                    education: undefined as any,
-                    existingSkills: [],
-                    district: '',
-                    state: '',
-                    preferredLivelihood: undefined as any
-                  });
-                }
+                setPendingProfile({
+                  name: '',
+                  age: 0,
+                  gender: 'Male',
+                  education: undefined as any,
+                  currentOccupation: '',
+                  existingSkills: [],
+                  workExperienceYears: 0,
+                  monthlyIncome: '',
+                  district: '',
+                  state: '',
+                  areaType: 'Rural',
+                  preferredLivelihood: undefined as any,
+                  interests: [],
+                  careerGoal: ''
+                });
                 setCurrentView('voice');
               }}
-              className="flex items-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3.5 py-2 text-xs font-bold transition-all shadow-md"
+              className="flex items-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3.5 py-2 text-xs font-bold transition-all shadow-md cursor-pointer"
             >
               <Mic size={14} />
               <span>Voice</span>
@@ -267,22 +341,28 @@ function MainAppContent() {
         {currentView === 'landing' && (
           <LandingPage
             onStartVoice={() => {
-              if (pendingProfile.name === 'Ravi Kumar') {
-                setPendingProfile({
-                  ...pendingProfile,
-                  name: '',
-                  education: undefined as any,
-                  existingSkills: [],
-                  district: '',
-                  state: '',
-                  preferredLivelihood: undefined as any
-                });
-              }
+              setPendingProfile({
+                name: '',
+                age: 0,
+                gender: 'Male',
+                education: undefined as any,
+                currentOccupation: '',
+                existingSkills: [],
+                workExperienceYears: 0,
+                monthlyIncome: '',
+                district: '',
+                state: '',
+                areaType: 'Rural',
+                preferredLivelihood: undefined as any,
+                interests: [],
+                careerGoal: ''
+              });
               setCurrentView('voice');
             }}
             onOpenAdmin={() => setCurrentView('admin')}
             onOpenForm={() => setCurrentView('manual')}
             onLoadDemo={handleSelectDemoProfile}
+            onOpenMap={() => setCurrentView('opportunities')}
           />
         )}
 
@@ -290,20 +370,28 @@ function MainAppContent() {
           <ProfileOnboardingChoice
             onSelectMethod={(method) => {
               if (method === 'voice') {
-                if (pendingProfile.name === 'Ravi Kumar') {
-                  setPendingProfile({
-                    ...pendingProfile,
-                    name: '',
-                    education: undefined as any,
-                    existingSkills: [],
-                    district: '',
-                    state: '',
-                    preferredLivelihood: undefined as any
-                  });
-                }
+                setPendingProfile({
+                  name: '',
+                  age: 0,
+                  gender: 'Male',
+                  education: undefined as any,
+                  currentOccupation: '',
+                  existingSkills: [],
+                  workExperienceYears: 0,
+                  monthlyIncome: '',
+                  district: '',
+                  state: '',
+                  areaType: 'Rural',
+                  preferredLivelihood: undefined as any,
+                  interests: [],
+                  careerGoal: ''
+                });
                 setCurrentView('voice');
-              } else if (method === 'text') setCurrentView('text');
-              else setCurrentView('manual');
+              } else if (method === 'text') {
+                setCurrentView('text');
+              } else {
+                setCurrentView('manual');
+              }
             }}
           />
         )}
@@ -337,6 +425,13 @@ function MainAppContent() {
             profile={pendingProfile}
             onConfirm={handleConfirmProfile}
             onEdit={() => setCurrentView('manual')}
+          />
+        )}
+
+        {currentView === 'transition' && (
+          <AIAnalysisTransition
+            beneficiaryName={pendingProfile.name || profile.name}
+            onComplete={handleAnalysisTransitionComplete}
           />
         )}
 
@@ -379,19 +474,19 @@ function MainAppContent() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setCurrentView('card')}
-                  className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-2.5 text-xs font-bold text-emerald-300 hover:bg-emerald-950/60"
+                  className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-2.5 text-xs font-bold text-emerald-300 hover:bg-emerald-950/60 cursor-pointer"
                 >
                   <CreditCard size={14} /> View ID Card
                 </button>
                 <button
                   onClick={() => setCurrentView('manual')}
-                  className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs font-bold text-slate-300 hover:border-slate-700"
+                  className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs font-bold text-slate-300 hover:border-slate-700 cursor-pointer"
                 >
                   Edit Profile
                 </button>
                 <button
                   onClick={() => setCurrentView('voice')}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-500 text-slate-950 px-4 py-2.5 text-xs font-bold hover:bg-emerald-400"
+                  className="flex items-center gap-2 rounded-xl bg-emerald-500 text-slate-950 px-4 py-2.5 text-xs font-bold hover:bg-emerald-400 cursor-pointer"
                 >
                   <Mic size={14} /> Voice Assistant
                 </button>
@@ -402,9 +497,11 @@ function MainAppContent() {
             <div className="flex gap-3 overflow-x-auto border-b border-slate-800 pb-2">
               {[
                 { id: 'nsqf', label: 'NSQF Training Courses', icon: GraduationCap },
+                { id: 'opportunities', label: 'Nearby Opportunities (Map)', icon: MapPin },
                 { id: 'livelihood', label: 'Livelihood & GIA Grants', icon: Briefcase },
                 { id: 'roadmap', label: 'Career Roadmap', icon: Sparkles },
-                { id: 'gap', label: 'Skill Gap Analysis', icon: CheckCircle2 }
+                { id: 'gap', label: 'Skill Gap Analysis', icon: CheckCircle2 },
+                { id: 'timeline', label: 'Grant Status Tracker', icon: Clock }
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeResultsTab === tab.id;
@@ -412,9 +509,9 @@ function MainAppContent() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveResultsTab(tab.id as any)}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                       isActive
-                        ? 'bg-emerald-500 text-slate-950 shadow-md'
+                        ? 'bg-emerald-500 text-slate-950 shadow-md font-bold'
                         : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
                     }`}
                   >
@@ -427,14 +524,22 @@ function MainAppContent() {
 
             {/* Tab Content */}
             {isAnalyzing || !analysisResult ? (
-              <div className="py-20 text-center text-slate-400">
-                <Sparkles className="animate-spin mx-auto text-emerald-400 mb-3" size={28} />
-                <p className="font-bold text-slate-200">Calculating NSQF alignment & official government URLs...</p>
-              </div>
+              <AIAnalysisTransition
+                beneficiaryName={profile.name}
+                onComplete={() => setIsAnalyzing(false)}
+              />
             ) : (
               <div>
                 {activeResultsTab === 'nsqf' && (
                   <NSQFRecommendations courses={analysisResult.nsqfRecommendations} />
+                )}
+
+                {activeResultsTab === 'opportunities' && (
+                  <OpportunityMap
+                    profile={profile}
+                    nsqfRecommendations={analysisResult.nsqfRecommendations}
+                    onNavigateToRoadmap={() => setActiveResultsTab('roadmap')}
+                  />
                 )}
 
                 {activeResultsTab === 'livelihood' && (
@@ -448,19 +553,46 @@ function MainAppContent() {
                   <CareerRoadmap
                     steps={analysisResult.careerRoadmap}
                     beneficiaryName={profile.name}
+                    onFindOpportunities={() => setActiveResultsTab('opportunities')}
                   />
                 )}
 
                 {activeResultsTab === 'gap' && (
                   <SkillGapAnalysis skillGap={analysisResult.skillGap} />
                 )}
+
+                {activeResultsTab === 'timeline' && (
+                  <LivelihoodStatusTimeline
+                    beneficiaryId={profile.beneficiaryId || 'SC-AJAY-2026-1001'}
+                    currentStageIndex={3}
+                  />
+                )}
               </div>
             )}
           </div>
         )}
 
+        {currentView === 'opportunities' && (
+          <div className="w-full mx-auto max-w-7xl px-4 py-8 space-y-8">
+            <OpportunityMap
+              profile={profile}
+              nsqfRecommendations={analysisResult?.nsqfRecommendations || []}
+              onNavigateToRoadmap={() => {
+                setCurrentView('results');
+                setActiveResultsTab('roadmap');
+              }}
+            />
+          </div>
+        )}
+
         {currentView === 'admin' && <AdminDashboard />}
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        currentView={currentView}
+        onNavigate={(view) => setCurrentView(view)}
+      />
 
       <footer className="border-t border-slate-900 bg-slate-950 py-8 px-4 text-center text-xs text-slate-500 space-y-2">
         <div className="flex items-center justify-center gap-2 text-slate-400 font-bold">
@@ -468,7 +600,14 @@ function MainAppContent() {
           <span>SakshamAI · PM-AJAY Grants-in-Aid (GIA) Component Public Service Portal</span>
         </div>
         <p>
-          Official Qualification References: <a href="https://nqr.gov.in/" target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">National Qualifications Register (NQR)</a> · <a href="https://www.nielit.in/content/nsqf" target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">NIELIT NSQF Portal</a>
+          Official Qualification References:{' '}
+          <a href="https://nqr.gov.in/" target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">
+            National Qualifications Register (NQR)
+          </a>{' '}
+          ·{' '}
+          <a href="https://www.nielit.in/content/nsqf" target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline">
+            NIELIT NSQF Portal
+          </a>
         </p>
       </footer>
     </div>
@@ -477,9 +616,10 @@ function MainAppContent() {
 
 export default function Home() {
   return (
-    <AuthProvider>
-      <MainAppContent />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <MainAppContent />
+      </AuthProvider>
+    </ToastProvider>
   );
 }
-

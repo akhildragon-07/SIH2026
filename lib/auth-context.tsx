@@ -10,7 +10,7 @@ interface AuthContextType {
   savedCourseIds: string[];
   registeredBeneficiaries: BeneficiaryProfile[];
   isSyncing: boolean;
-  login: (email: string, name: string) => void;
+  login: (userIdOrName: string, dobPassword?: string) => Promise<boolean>;
   logout: () => void;
   registerBeneficiary: (profileData: Partial<BeneficiaryProfile>) => Promise<BeneficiaryProfile>;
   updateProfile: (updated: Partial<BeneficiaryProfile>) => Promise<BeneficiaryProfile>;
@@ -19,22 +19,27 @@ interface AuthContextType {
   switchBeneficiary: (target: string | BeneficiaryProfile) => Promise<void>;
 }
 
-const defaultSeedList: BeneficiaryProfile[] = DEMO_BENEFICIARIES.map((d, index) => ({
-  ...d.profile,
-  beneficiaryId: `SC-AJAY-2026-100${index + 1}`,
-  userId: `user-00${index + 1}`,
-  phone: `984802233${8 + index}`,
-  email: `${d.profile.name.toLowerCase().replace(/\s+/g, '')}@pmajay.gov.in`,
-  category: 'Scheduled Caste (SC)',
-  isBackendSynced: true,
-  giaEligibilityStatus: 'Eligible for 100% GIA Toolkit Grant'
-}));
+const defaultSeedList: BeneficiaryProfile[] = DEMO_BENEFICIARIES.map((d, index) => {
+  const dob = `15/06/${new Date().getFullYear() - d.profile.age}`;
+  const nameBasedUserId = d.profile.name.toLowerCase().trim();
+  return {
+    ...d.profile,
+    beneficiaryId: `SC-AJAY-2026-100${index + 1}`,
+    userId: nameBasedUserId,
+    dob,
+    phone: `984802233${8 + index}`,
+    email: `${d.profile.name.toLowerCase().replace(/\s+/g, '')}@pmajay.gov.in`,
+    category: 'Scheduled Caste (SC)',
+    isBackendSynced: true,
+    giaEligibilityStatus: 'Eligible for 100% GIA Toolkit Grant'
+  };
+});
 
 const defaultProfile: BeneficiaryProfile = defaultSeedList[0];
 
 const AuthContext = createContext<AuthContextType>({
   user: {
-    userId: 'user-001',
+    userId: defaultProfile.userId || 'ravi kumar',
     beneficiaryId: 'SC-AJAY-2026-1001',
     email: 'ravi.kumar@pmajay.gov.in',
     phone: '9848022338',
@@ -45,7 +50,7 @@ const AuthContext = createContext<AuthContextType>({
   savedCourseIds: [],
   registeredBeneficiaries: defaultSeedList,
   isSyncing: false,
-  login: () => {},
+  login: async () => false,
   logout: () => {},
   registerBeneficiary: async () => defaultProfile,
   updateProfile: async () => defaultProfile,
@@ -56,7 +61,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserAuth | null>({
-    userId: defaultProfile.userId || 'user-001',
+    userId: defaultProfile.userId || 'ravi kumar',
     beneficiaryId: defaultProfile.beneficiaryId || 'SC-AJAY-2026-1001',
     email: defaultProfile.email || 'ravi.kumar@pmajay.gov.in',
     phone: defaultProfile.phone || '9848022338',
@@ -101,7 +106,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsSyncing(true);
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newBeneficiaryId = profileData.beneficiaryId || `SC-AJAY-2026-${randomSuffix}`;
-    const newUserId = profileData.userId || `user-${Date.now()}`;
+    const newUserId = profileData.userId || (profileData.name ? profileData.name.toLowerCase().trim() : `user-${Date.now()}`);
+    const assignedDob = profileData.dob || (profileData.age ? `15/06/${new Date().getFullYear() - profileData.age}` : '15/06/1998');
 
     const fullProfile: BeneficiaryProfile = {
       ...defaultProfile,
@@ -109,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: newBeneficiaryId,
       beneficiaryId: newBeneficiaryId,
       userId: newUserId,
+      dob: assignedDob,
       category: profileData.category || 'Scheduled Caste (SC)',
       giaEligibilityStatus: 'Eligible for 100% GIA Toolkit Grant',
       isBackendSynced: true,
@@ -125,6 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const json = await res.json();
       if (json.success && json.data) {
+        fullProfile.userId = json.userId || json.data.userId || newUserId;
         fullProfile.isBackendSynced = true;
       }
       await syncInitialBackend();
@@ -137,9 +145,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2. Set Active Session & Local Storage
     const authUser: UserAuth = {
-      userId: newUserId,
+      userId: fullProfile.userId || newUserId,
       beneficiaryId: newBeneficiaryId,
-      email: fullProfile.email || `${fullProfile.name.toLowerCase().replace(/\s+/g, '')}@pmajay.gov.in`,
+      email: fullProfile.email || `${(fullProfile.name || 'beneficiary').toLowerCase().replace(/\s+/g, '')}@pmajay.gov.in`,
       phone: fullProfile.phone || '9848022338',
       name: fullProfile.name,
       isAuthenticated: true
@@ -218,7 +226,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let targetProfile: BeneficiaryProfile | undefined;
     if (typeof target === 'string') {
       targetProfile = registeredBeneficiaries.find(
-        (b) => b.beneficiaryId === target || b.id === target || b.userId === target
+        (b) =>
+          b.beneficiaryId?.toLowerCase() === target.toLowerCase() ||
+          b.userId?.toLowerCase() === target.toLowerCase() ||
+          b.id?.toLowerCase() === target.toLowerCase() ||
+          b.name?.toLowerCase() === target.toLowerCase()
       );
       if (!targetProfile) {
         try {
@@ -236,7 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!targetProfile) return;
 
     const authUser: UserAuth = {
-      userId: targetProfile.userId || `user-${Date.now()}`,
+      userId: targetProfile.userId || targetProfile.name.toLowerCase().trim(),
       beneficiaryId: targetProfile.beneficiaryId || targetProfile.id || `SC-AJAY-2026-1001`,
       email: targetProfile.email || `${targetProfile.name.toLowerCase().replace(/\s+/g, '')}@pmajay.gov.in`,
       phone: targetProfile.phone || '9848022338',
@@ -253,17 +265,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = (email: string, name: string) => {
-    const authUser: UserAuth = {
-      userId: `user-${Date.now()}`,
-      beneficiaryId: profile.beneficiaryId || `SC-AJAY-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      email,
-      name,
-      isAuthenticated: true
-    };
-    setUser(authUser);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('saksham_user', JSON.stringify(authUser));
+  const login = async (userIdOrName: string, dobPassword?: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/beneficiaries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'login',
+          userId: userIdOrName,
+          dob: dobPassword
+        })
+      });
+
+      const json = await res.json();
+      if (json.success && json.data) {
+        const loggedProfile = json.data as BeneficiaryProfile;
+        await switchBeneficiary(loggedProfile);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Login error:', e);
+      return false;
     }
   };
 
@@ -306,5 +329,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => useContext(AuthContext);
-
-

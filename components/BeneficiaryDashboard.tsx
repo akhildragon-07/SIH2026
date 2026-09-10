@@ -3,11 +3,27 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { NSQF_COURSES_DATASET } from '@/lib/nsqf-data';
-import { UserCheck, GraduationCap, Bookmark, Sparkles, CheckCircle2, AlertTriangle, ArrowRight, ExternalLink, ShieldCheck, Edit3, CreditCard } from 'lucide-react';
+import {
+  UserCheck,
+  GraduationCap,
+  Bookmark,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  ExternalLink,
+  ShieldCheck,
+  Edit3,
+  CreditCard,
+  MapPin,
+  Clock
+} from 'lucide-react';
 import NSQFRecommendations from './NSQFRecommendations';
 import SkillGapAnalysis from './SkillGapAnalysis';
 import CareerRoadmap from './CareerRoadmap';
 import BeneficiaryAccountCard from './BeneficiaryAccountCard';
+import OpportunityMap from './OpportunityMap';
+import LivelihoodStatusTimeline from './LivelihoodStatusTimeline';
 import { analyzeBeneficiaryProfile } from '@/lib/ai-engine';
 
 interface DashboardProps {
@@ -17,11 +33,10 @@ interface DashboardProps {
 
 export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: DashboardProps) {
   const { user, profile, savedCourseIds } = useAuth();
-  const [activeTab, setActiveTab] = useState<'card' | 'recommended' | 'gaps' | 'roadmap' | 'saved'>('card');
+  const [activeTab, setActiveTab] = useState<'card' | 'opportunities' | 'recommended' | 'gaps' | 'roadmap' | 'timeline' | 'saved'>('card');
 
   const analysis = analyzeBeneficiaryProfile(profile);
   const savedCourses = NSQF_COURSES_DATASET.filter((c) => savedCourseIds.includes(c.id));
-  const completionPct = profile.profileCompletionPercentage || 100;
 
   return (
     <div className="w-full mx-auto max-w-7xl px-4 py-8 space-y-8">
@@ -71,8 +86,8 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Recommended Pathways</p>
-          <p className="text-2xl font-bold font-serif text-teal-400">{analysis.nsqfRecommendations.length}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Nearby Opportunities</p>
+          <p className="text-2xl font-bold font-serif text-teal-400">6+ Mapped</p>
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-1">
@@ -92,6 +107,8 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
       <div className="flex gap-3 overflow-x-auto border-b border-slate-800 pb-2">
         {[
           { id: 'card', label: 'PM-AJAY Digital ID Card', icon: CreditCard },
+          { id: 'timeline', label: 'Grant Status Tracker', icon: Clock },
+          { id: 'opportunities', label: 'Opportunities Near Me', icon: MapPin },
           { id: 'recommended', label: 'Recommended NSQF Courses', icon: GraduationCap },
           { id: 'gaps', label: 'Skill Gap Diagnostics', icon: AlertTriangle },
           { id: 'roadmap', label: 'Career Roadmap', icon: Sparkles },
@@ -103,8 +120,8 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
-                isActive ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                isActive ? 'bg-emerald-500 text-slate-950 shadow-md font-bold' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <Icon size={16} />
@@ -120,7 +137,22 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
           <BeneficiaryAccountCard
             profile={profile}
             onEditProfile={onEditProfile}
-            onViewRecommendations={() => setActiveTab('recommended')}
+            onViewRecommendations={() => setActiveTab('opportunities')}
+          />
+        )}
+
+        {activeTab === 'timeline' && (
+          <LivelihoodStatusTimeline
+            beneficiaryId={profile.beneficiaryId || 'SC-AJAY-2026-1001'}
+            currentStageIndex={3}
+          />
+        )}
+
+        {activeTab === 'opportunities' && (
+          <OpportunityMap
+            profile={profile}
+            nsqfRecommendations={analysis.nsqfRecommendations}
+            onNavigateToRoadmap={() => setActiveTab('roadmap')}
           />
         )}
 
@@ -133,7 +165,11 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
         )}
 
         {activeTab === 'roadmap' && (
-          <CareerRoadmap steps={analysis.careerRoadmap} beneficiaryName={profile.name} />
+          <CareerRoadmap
+            steps={analysis.careerRoadmap}
+            beneficiaryName={profile.name}
+            onFindOpportunities={() => setActiveTab('opportunities')}
+          />
         )}
 
         {activeTab === 'saved' && (
@@ -176,4 +212,3 @@ export default function BeneficiaryDashboard({ onEditProfile, onOpenVoiceAI }: D
     </div>
   );
 }
-

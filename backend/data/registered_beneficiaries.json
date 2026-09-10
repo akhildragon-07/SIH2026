@@ -1,42 +1,43 @@
 [
   {
-    "id": "demo-ravi",
-    "beneficiaryId": "SC-AJAY-2026-1001",
-    "userId": "user-001",
-    "name": "विजय मैं",
+    "id": "SC-AJAY-2026-7280",
+    "beneficiaryId": "SC-AJAY-2026-7280",
+    "userId": "akhil",
+    "name": "Akhil",
     "phone": "9848022338",
-    "email": "ravikumar@pmajay.gov.in",
+    "email": "demobeneficiary@pmajay.gov.in",
     "category": "Scheduled Caste (SC)",
     "age": 26,
-    "gender": "Male",
-    "state": "Bihar",
-    "district": "Gaya",
+    "gender": "Female",
+    "state": "Tamil Nadu",
+    "district": "Akhil",
     "areaType": "Rural",
     "education": "12th Pass",
-    "currentOccupation": "Local Stitching Worker",
+    "currentOccupation": "வேலை தேடுகிறேன்",
     "existingSkills": [
-      "House Wiring & Electricals",
-      "Electrical Testing"
+      "Organic Farming"
     ],
-    "workExperienceYears": 10,
-    "monthlyIncome": "₹4,000 – ₹7,000",
+    "workExperienceYears": 2,
+    "monthlyIncome": "₹4,500 – ₹7,500",
     "preferredLivelihood": "Job",
     "interests": [
       "Garment Design",
       "Boutique Setup",
       "Uniform Stitching"
     ],
-    "careerGoal": "Establish an independent home tailoring unit with motorized equipment under PM-AJAY GIA",
+    "careerGoal": "Secure a salaried job with certified NSQF credentials.",
     "giaEligibilityStatus": "Eligible for 100% GIA Toolkit Grant",
     "isBackendSynced": true,
-    "createdAt": "2026-08-31T07:40:14.498Z",
-    "updatedAt": "2026-08-31T07:40:22.284Z",
-    "profileCompletionPercentage": 100
+    "createdAt": "2026-09-10T21:34:40.870Z",
+    "updatedAt": "2026-09-10T21:34:40.908Z",
+    "profileCompletionPercentage": 100,
+    "dob": "12/06/1997",
+    "passwordHash": "9f909df182fb0516b9c055c0cf585623dddf45728cb34999048a0569c8a6d4ba"
   },
   {
     "id": "SC-AJAY-2026-1002",
     "beneficiaryId": "SC-AJAY-2026-1002",
-    "userId": "user-002",
+    "userId": "sunita devi",
     "name": "Sunita Devi",
     "phone": "9848022339",
     "email": "sunita.devi@pmajay.gov.in",
@@ -63,12 +64,14 @@
     "careerGoal": "Scale up poultry unit to 200 birds with PM-AJAY livestock shed and chick feed grant.",
     "giaEligibilityStatus": "Eligible for 100% GIA Toolkit Grant",
     "isBackendSynced": true,
-    "createdAt": "2026-08-30T19:17:06.758Z"
+    "createdAt": "2026-08-30T19:17:06.758Z",
+    "dob": "15/06/1994",
+    "passwordHash": "8155fe997229d25667ddcc29f92e6bda1867f8fde42349baa9eb065d37361c7a"
   },
   {
     "id": "SC-AJAY-2026-1003",
     "beneficiaryId": "SC-AJAY-2026-1003",
-    "userId": "user-003",
+    "userId": "manish paswan",
     "name": "Manish Paswan",
     "phone": "9848022340",
     "email": "manish.paswan@pmajay.gov.in",
@@ -95,12 +98,14 @@
     "careerGoal": "Become a certified Suryamitra technician and establish a solar installation service kiosk.",
     "giaEligibilityStatus": "Eligible for 100% GIA Toolkit Grant",
     "isBackendSynced": true,
-    "createdAt": "2026-08-30T19:17:06.758Z"
+    "createdAt": "2026-08-30T19:17:06.758Z",
+    "dob": "15/06/2004",
+    "passwordHash": "c9f6793262621430176a710a229dbdb61acf511f05b25d68904a370211716cbe"
   },
   {
     "id": "SC-AJAY-2026-1004",
     "beneficiaryId": "SC-AJAY-2026-1004",
-    "userId": "user-004",
+    "userId": "pooja rani",
     "name": "Pooja Rani",
     "phone": "9848022341",
     "email": "pooja.rani@pmajay.gov.in",
@@ -127,6 +132,8 @@
     "careerGoal": "Secure a certified General Duty Assistant (GDA) job in a district hospital.",
     "giaEligibilityStatus": "Eligible for 100% GIA Skilling Allowance",
     "isBackendSynced": true,
-    "createdAt": "2026-08-30T19:17:06.758Z"
+    "createdAt": "2026-08-30T19:17:06.758Z",
+    "dob": "15/06/2002",
+    "passwordHash": "cf90f97d37b6a0c839da98e3af4325db9eaa2185a21c1fb72b9b0b66841dc785"
   }
 ]

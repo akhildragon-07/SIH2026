@@ -15,7 +15,9 @@ export type LivelihoodType =
 export interface BeneficiaryProfile {
   id?: string;
   beneficiaryId?: string; // e.g. "SC-AJAY-2026-8492"
-  userId?: string;
+  userId?: string; // e.g. "ravi kumar"
+  dob?: string; // e.g. "15/08/1998"
+  passwordHash?: string; // SHA-256 hash of DOB for secure password login
   name: string;
   phone?: string;
   email?: string;
@@ -42,6 +44,16 @@ export interface BeneficiaryProfile {
   updatedAt?: string;
   giaEligibilityStatus?: 'Eligible for 100% GIA Toolkit Grant' | 'Under Verification';
 }
+
+export type VoiceState =
+  | 'IDLE'
+  | 'LISTENING'
+  | 'PROCESSING'
+  | 'AI_SPEAKING'
+  | 'CONFIRMING'
+  | 'ANALYZING'
+  | 'RECOMMENDING'
+  | 'ERROR';
 
 export interface NSQFCourse {
   id: string;
@@ -130,6 +142,21 @@ export interface ChatMessage {
   suggestedPrompts?: string[];
 }
 
+export interface AdminAnalyticsData {
+  totalBeneficiaries: number;
+  scBeneficiariesPercentage: number;
+  totalSkillsMapped: number;
+  skillGapsIdentified: number;
+  nsqfCoursesRecommended: number;
+  totalGiaGrantAllocatedINR: number;
+  educationBreakdown: { label: string; count: number; percentage: number }[];
+  topExistingSkills: { skill: string; count: number; percentage: number }[];
+  topSkillGaps: { skill: string; count: number; percentage: number }[];
+  livelihoodPreferences: { category: string; percentage: number }[];
+  districtDistribution: { district: string; beneficiaries: number; topNeed: string }[];
+  sectorDemand: { sector: string; demandPercentage: number }[];
+}
+
 export interface UserAuth {
   userId: string;
   beneficiaryId?: string;
@@ -139,3 +166,70 @@ export interface UserAuth {
   token?: string;
   isAuthenticated: boolean;
 }
+
+export type OpportunityType = 'training' | 'job' | 'apprenticeship' | 'livelihood';
+export type OpportunityCareerGoal = 'job' | 'self-employment' | 'entrepreneurship';
+
+export interface Opportunity {
+  id: string;
+  name: string;
+  type: OpportunityType;
+  state: string;
+  district: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  skills: string[];
+  educationRequired?: string;
+  nsqfLevel?: number;
+  courseName?: string;
+  provider?: string;
+  careerGoal: OpportunityCareerGoal;
+  estimatedMonthlyIncome?: number;
+  distanceKm?: number;
+  eligibility?: string[];
+  description?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  address?: string;
+  isVerified?: boolean;
+}
+
+export interface ExplainableMatchScore {
+  overallScore: number;
+  skillMatchPct: number;
+  locationScorePct: number;
+  goalMatchPct: number;
+  eligibilityMatchPct: number;
+  nsqfMatchPct: number;
+  reasons: string[];
+}
+
+export interface OpportunityMatchResult extends Opportunity {
+  matchScore: number;
+  explainableScore: ExplainableMatchScore;
+  calculatedDistanceKm: number;
+  isWithinRadius: boolean;
+}
+
+export interface OpportunityFilterState {
+  type: 'all' | OpportunityType | 'self-employment' | 'enterprise';
+  radiusKm: number; // 5, 10, 25, 50
+  skill: string; // 'all' or specific skill
+  careerGoal: 'all' | 'job' | 'self-employment' | 'entrepreneurship';
+  searchQuery: string;
+}
+
+export interface DistrictOpportunityStats {
+  district: string;
+  state: string;
+  total: number;
+  training: number;
+  job: number;
+  apprenticeship: number;
+  livelihood: number;
+  topSkills: { skill: string; demand: number }[];
+  density: 'high' | 'medium' | 'low';
+  skillGapNotes?: string;
+}
+

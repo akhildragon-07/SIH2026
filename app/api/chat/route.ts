@@ -1,307 +1,359 @@
 import { NextResponse } from 'next/server';
-import { extractProfileFromText } from '@/lib/ai-engine';
+import { extractProfileFromText, extractVoiceCommandIntent, generateVerbalProfileSummary } from '@/lib/ai-engine';
 import { BeneficiaryProfile } from '@/lib/types';
 
-export type DialogueStage = 'name_age' | 'education' | 'skills_exp' | 'location' | 'livelihood_goal' | 'complete';
+export type DialogueStage =
+  | 'name'
+  | 'age'
+  | 'dob'
+  | 'education'
+  | 'skills'
+  | 'experience'
+  | 'occupation'
+  | 'location'
+  | 'livelihood_goal'
+  | 'confirm_summary'
+  | 'complete';
 
 interface StepContent {
-  prompt: (name?: string, edu?: string, skills?: string, dist?: string, state?: string, age?: number) => string;
+  prompt: (p: Partial<BeneficiaryProfile>) => string;
   suggestions: string[];
 }
 
 const INTERACTIVE_DIALOGUE: Record<string, Record<DialogueStage, StepContent>> = {
-  'Tamil': {
-    name_age: {
-      prompt: () => "வணக்கம்! நான் சக்ஷம் AI, PM-AJAY திட்டத்தின் குரல் வழிகாட்டி. உங்கள் முழு பெயர் மற்றும் வயதை சொல்லுங்கள்.",
-      suggestions: [
-        "யஷ்வந்த், 24",
-        "என் பேரு குமார், வயது 28",
-        "என் பெயர் சுனிதா, வயது 26"
-      ]
+  'English': {
+    name: {
+      prompt: () => "Namaste! I am SakshamAI, your PM-AJAY voice guide. What is your full name?",
+      suggestions: ["My name is Satil", "My name is Ramesh", "Pooja Sharma"]
+    },
+    age: {
+      prompt: (p) => `Nice to meet you, ${p.name || 'friend'}. What is your age?`,
+      suggestions: ["I am 24", "26 years old", "28"]
+    },
+    dob: {
+      prompt: () => "Thank you. What is your date of birth?",
+      suggestions: ["15 August 2002", "15/08/2000", "12 June 1998"]
     },
     education: {
-      prompt: (name, _edu, _skills, _dist, _state, age) =>
-        `நன்றி ${name || 'அன்பரே'}${age ? ` (வயது ${age})` : ''}! உங்கள் கல்வித் தகுதி என்ன? (உதாரணமாக: 8-வது வகுப்பு, 10-வது வகுப்பு, 12-வது வகுப்பு, ITI அல்லது பள்ளிக்கு செல்லவில்லை)`,
-      suggestions: [
-        "10-வது வகுப்பு (10th standard)",
-        "12-வது வகுப்பு (+2 pass)",
-        "8-வது வகுப்பு (8th Pass)",
-        "பள்ளிக்கு செல்லவில்லை (Below 8th)",
-        "ஐடிஐ / டிப்ளமோ (ITI)"
-      ]
+      prompt: () => "Thank you. What is your highest level of education?",
+      suggestions: ["10th Pass", "12th Pass", "Graduate & Above", "ITI / Diploma", "8th Pass", "Below 8th"]
     },
-    skills_exp: {
-      prompt: (name, edu) =>
-        `புரிந்தது, ${edu || 'கல்வி'}! உங்களுக்கு என்னென்ன தொழில் வேலைகள் அல்லது திறன்கள் தெரியும், மற்றும் எத்தனை வருட அனுபவம் உள்ளது? (எ.கா. ப்ளம்பிங், தையல், எலக்ட்ரிக்கல், விவசாயம், கம்ப்யூட்டர்)`,
-      suggestions: [
-        "ப்ளம்பிங் வேலை, 2 வருட அனுபவம்",
-        "தையல் மற்றும் துணி தைப்பது, 3 வருட அனுபவம்",
-        "எலக்ட்ரிக்கல் மற்றும் வயரிங் வேலை",
-        "கம்ப்யூட்டர், எம்எஸ் வேர்ட் & டைப்பிங்"
-      ]
+    skills: {
+      prompt: () => "Good. What skills or work do you know?",
+      suggestions: ["Tailoring and sewing", "Plumbing and pipe fitting", "House wiring & electricals", "Organic farming", "Mobile repair"]
+    },
+    experience: {
+      prompt: (p) => `Great. How many years of work experience do you have${p.existingSkills && p.existingSkills.length > 0 ? ` in ${p.existingSkills[0]}` : ''}?`,
+      suggestions: ["Two years", "3 years", "1 year", "No experience, want to learn"]
+    },
+    occupation: {
+      prompt: () => "What work are you currently doing?",
+      suggestions: ["Tailoring from home", "Electrician apprentice", "Farming", "Unemployed / Looking for work"]
     },
     location: {
-      prompt: (name, _edu, skills) =>
-        `அருமை${skills ? ` (${skills})` : ''}! நீங்கள் எந்த மாநிலம் மற்றும் மாவட்டத்தில் வசிக்கிறீர்கள்? (எ.கா. தமிழ்நாடு, தேனி மாவட்டம் அல்லது மதுரை)`,
-      suggestions: [
-        "தமிழ்நாடு, தேனி மாவட்டம்",
-        "தமிழ்நாடு, மதுரை மாவட்டம்",
-        "தமிழ்நாடு, சென்னை"
-      ]
+      prompt: () => "Which village, town, district, or city do you live in?",
+      suggestions: ["Theni", "Vizianagaram", "Varanasi", "Mysuru", "Ernakulam", "Solapur"]
     },
     livelihood_goal: {
-      prompt: (name, _edu, _skills, dist, state) =>
-        `பதிவு செய்யப்பட்டது (${dist || ''}, ${state || 'தமிழ்நாடு'})! நீங்கள் மாதச் சம்பள வேலை (Job) விரும்புகிறீர்களா அல்லது PM-AJAY டூல்கிட் மானியத்துடன் சொந்த தொழில் (Self-employment) தொடங்க விரும்புகிறீர்களா?`,
-      suggestions: [
-        "நான் மாதச் சம்பள வேலை (Job) விரும்புகிறேன்",
-        "நான் PM-AJAY டூல்கிட் மானியத்துடன் சுயதொழில் தொடங்க விரும்புகிறேன்"
-      ]
+      prompt: () => "What kind of livelihood are you looking for: a job, self-employment, or both?",
+      suggestions: ["Self-employment with PM-AJAY toolkit grant", "Salaried Job in a company", "Both"]
+    },
+    confirm_summary: {
+      prompt: (p) => generateVerbalProfileSummary(p, 'English'),
+      suggestions: ["Yes, that's correct", "No, I want to change something"]
     },
     complete: {
-      prompt: (name, edu, skills, dist, state, age) =>
-        `அற்புதம் ${name || 'பயனாளி'}! உங்கள் அதிகாரப்பூர்வ PM-AJAY பயனாளி கணக்கு உருவாக்கப்பட்டது! பதிவு செய்யப்பட்ட விவரங்கள்: பெயர்: ${name || ''}${age ? ` (வயது ${age})` : ''}, கல்வி: ${edu || '10th'}, திறன்கள்: ${skills || 'தொழில் திறன்'}, மாவட்டம்: ${dist || 'தேனி'}, ${state || 'தமிழ்நாடு'}. உங்கள் NSQF பயிற்சி மற்றும் வேலை வாய்ப்புகளைக் காண கீழே உள்ள 'பகுப்பாய்வு செய்' பொத்தானை அழுத்தவும்!`,
-      suggestions: [
-        "எனது NSQF பயிற்சி மற்றும் PM-AJAY திட்டத்தை காட்டுங்கள்",
-        "எனக்கு என்னென்ன டூல்கிட் மானியம் கிடைக்கும்?"
-      ]
+      prompt: (p) => `Awesome ${p.name || 'Beneficiary'}! Your details have been verified and your official PM-AJAY account is registered. Analyzing your personalized NSQF training opportunities now.`,
+      suggestions: ["Show my opportunities", "View PM-AJAY toolkit grant"]
+    }
+  },
+
+  'Tamil': {
+    name: {
+      prompt: () => "வணக்கம்! நான் சக்ஷம் AI, PM-AJAY திட்டத்தின் குரல் வழிகாட்டி. உங்கள் முழு பெயர் என்ன?",
+      suggestions: ["என் பெயர் சதீல்", "என் பெயர் முருகன்", "சுனிதா"]
+    },
+    age: {
+      prompt: (p) => `வணக்கம் ${p.name || 'அன்பரே'}! உங்கள் வயது என்ன?`,
+      suggestions: ["வயது 24", "26", "28 வயது"]
+    },
+    dob: {
+      prompt: () => "நன்றி. உங்கள் பிறந்த தேதி என்ன? (எ.கா. 15 ஆகஸ்ட் 2002 அல்லது 15/08/2000)",
+      suggestions: ["15 ஆகஸ்ட் 2002", "15/08/2000", "12 ஜூன் 1998"]
+    },
+    education: {
+      prompt: () => "நன்றி. உங்கள் கல்வித் தகுதி என்ன? (எ.கா. 10-வது வகுப்பு, 12-வது வகுப்பு, பட்டப்படிப்பு, ITI அல்லது பள்ளிக்கு செல்லவில்லை)",
+      suggestions: ["10-வது வகுப்பு (10th)", "12-வது வகுப்பு (+2)", "பட்டப்படிப்பு (Degree)", "ஐடிஐ / டிப்ளமோ", "8-வது வகுப்பு"]
+    },
+    skills: {
+      prompt: () => "அருமை. உங்களுக்கு என்னென்ன தொழில் வேலைகள் அல்லது கைவினைத் திறன்கள் தெரியும்?",
+      suggestions: ["தையல் மற்றும் ஆடை தைப்பது", "ப்ளம்பிங் குழாய் வேலை", "எலக்ட்ரிக்கல் வயரிங்", "விவசாயம்", "மொபைல் ரிப்பேர்"]
+    },
+    experience: {
+      prompt: () => "மிக நன்று. இந்த வேலையில் உங்களுக்கு எத்தனை வருட அனுபவம் உள்ளது?",
+      suggestions: ["2 வருட அனுபவம்", "3 வருடங்கள்", "1 வருடம்", "அனுபவம் இல்லை"]
+    },
+    occupation: {
+      prompt: () => "தற்போது நீங்கள் என்ன வேலை செய்கிறீர்கள்?",
+      suggestions: ["வீட்டில் தையல் வேலை", "எலக்ட்ரீசியன் வேலை", "விவசாயம்", "வேலை தேடுகிறேன்"]
+    },
+    location: {
+      prompt: () => "நீங்கள் எந்த கிராமம், ஊர், அல்லது மாவட்டத்தில் வசிக்கிறீர்கள்?",
+      suggestions: ["தேனி", "மதுரை", "சென்னை", "கோயம்புத்தூர்", "திருச்சி"]
+    },
+    livelihood_goal: {
+      prompt: () => "நீங்கள் மாதச் சம்பள வேலை விரும்புகிறீர்களா, அல்லது 100% PM-AJAY டூல்கிட் மானியத்துடன் சொந்த தொழில் தொடங்க விரும்புகிறீர்களா?",
+      suggestions: ["PM-AJAY டூல்கிட் மானியத்துடன் சொந்த தொழில்", "மாதச் சம்பள வேலை (Job)"]
+    },
+    confirm_summary: {
+      prompt: (p) => generateVerbalProfileSummary(p, 'Tamil'),
+      suggestions: ["ஆம், சரியானது", "இல்லை, மாற்ற வேண்டும்"]
+    },
+    complete: {
+      prompt: (p) => `அற்புதம் ${p.name || 'பயனாளி'}! உங்கள் விவரங்கள் பதிவு செய்யப்பட்டு கணக்கு உருவாக்கப்பட்டது. உங்களுக்கான NSQF பயிற்சிகளை இப்போது பகுப்பாய்வு செய்கிறேன்.`,
+      suggestions: ["என் வாய்ப்புகளை காட்டுங்கள்", "PM-AJAY டூல்கிட் விவரங்கள்"]
     }
   },
 
   'Telugu': {
-    name_age: {
-      prompt: () => "నమస్తే! నేను సాక్షమ్ AI, PM-AJAY వాయిస్ గైడ్. దయచేసి మీ పూర్తి పేరు మరియు వయస్సు చెప్పండి.",
-      suggestions: [
-        "అఖిల్, 24",
-        "నా పేరు రవి కుమార్, వయస్సు 26",
-        "నా పేరు మనీష్, వయస్సు 22"
-      ]
+    name: {
+      prompt: () => "నమస్తే! నేను సాక్షమ్ AI, PM-AJAY వాయిస్ గైడ్. మీ పూర్తి పేరు ఏమిటి?",
+      suggestions: ["నా పేరు సతీల్", "నా పేరు రమేష్", "సునీత"]
+    },
+    age: {
+      prompt: (p) => `నమస్తే ${p.name || 'మిత్రమా'}! మీ వయస్సు ఎంత?`,
+      suggestions: ["వయస్సు 24", "26", "28 సంవత్సరాలు"]
+    },
+    dob: {
+      prompt: () => "ధన్యవాదాలు. మీ పుట్టిన తేదీ ఏమిటి?",
+      suggestions: ["15 ఆగస్టు 2002", "15/08/2000", "12 జూన్ 1998"]
     },
     education: {
-      prompt: (name, _edu, _skills, _dist, _state, age) =>
-        `ధన్యవాదాలు ${name || 'మిత్రమా'}${age ? ` (వయస్సు ${age})` : ''}! మీ చదువు ఎంతవరకు చదివారు? (ఉదాహరణకు: 8వ తరగతి, 10వ తరగతి, 12వ తరగతి, ITI లేదా చదువుకోలేదు)`,
-      suggestions: [
-        "10వ తరగతి పాస్ (10th standard)",
-        "12వ తరగతి / ఇంటర్ (12th standard)",
-        "8వ తరగతి పాస్ (8th Pass)",
-        "చదువుకోలేదు (Below 8th)",
-        "ఐటీఐ / డిప్లొమా"
-      ]
+      prompt: () => "ధన్యవాదాలు. మీ అత్యున్నత విద్యార్హత ఏమిటి? (ఉదా: 10వ తరగతి, ఇంటర్, డిగ్రీ, ITI)",
+      suggestions: ["10వ తరగతి పాస్", "ఇంటర్ / 12వ", "డిగ్రీ (Degree)", "ఐటీఐ / డిప్లొమా", "8వ తరగతి"]
     },
-    skills_exp: {
-      prompt: (name, edu) =>
-        `తెలుసుకున్నాను, ${edu || 'చదువు'}! మీకు ఏయే పనుల్లో నైపుణ్యం మరియు ఎంత అనుభవం ఉంది? (ఉదా. ప్లంబింగ్, కుట్టుపని, వైరింగ్, కంప్యూటర్, వ్యవసాయం)`,
-      suggestions: [
-        "ప్లంబింగ్ పని, 2 సంవత్సరాల అనుభవం",
-        "టైలరింగ్ మరియు బట్టలు కుట్టడం, 3 సంవత్సరాల అనుభవం",
-        "కంప్యూటర్, ఎంఎస్ వర్డ్ & టైపింగ్",
-        "ఎలక్ట్రికల్ వైరింగ్ మరియు మోటార్ పని"
-      ]
+    skills: {
+      prompt: () => "చాలా బాగుంది. మీకు ఏయే పనుల్లో నైపుణ్యం ఉంది?",
+      suggestions: ["టైలరింగ్ & కుట్టుపని", "ప్లంబింగ్ పని", "ఎలక్ట్రికల్ వైరింగ్", "వ్యవసాయం", "కంప్యూటర్ & టైపింగ్"]
+    },
+    experience: {
+      prompt: () => "ఈ పనిలో మీకు ఎన్ని సంవత్సరాల అనుభవం ఉంది?",
+      suggestions: ["2 సంవత్సరాల అనుభవం", "3 సంవత్సరాలు", "1 సంవత్సరం", "అనుభవం లేదు"]
+    },
+    occupation: {
+      prompt: () => "ప్రస్తుతం మీరు ఏ పని చేస్తున్నారు?",
+      suggestions: ["ఇంట్లో కుట్టుపని", "ఎలక్ట్రీషియన్", "వ్యవసాయం", "ఉద్యోగం కోసం చూస్తున్నాను"]
     },
     location: {
-      prompt: (name, _edu, skills) =>
-        `చాలా బాగుంది${skills ? ` (${skills})` : ''}! మీరు ఏ రాష్ట్రం మరియు ఏ జిల్లాలో నివసిస్తున్నారు? (ఉదా. ఆంధ్రప్రదేశ్, విజయనగరం జిల్లా)`,
-      suggestions: [
-        "ఆంధ్రప్రదేశ్, విజయనగరం జిల్లా",
-        "ఆంధ్రప్రదేశ్, గుంటూరు జిల్లా",
-        "తెలంగాణ, హైదరాబాద్"
-      ]
+      prompt: () => "మీరు ఏ గ్రామం, పట్టణం లేదా జిల్లాలో నివసిస్తున్నారు?",
+      suggestions: ["విజయనగరం", "విశాఖపట్నం", "గుంటూరు", "హైదరాబాద్"]
     },
     livelihood_goal: {
-      prompt: (name, _edu, _skills, dist, state) =>
-        `నమోదైంది (${dist || ''}, ${state || 'ఆంధ్రప్రదేశ్'})! మీరు కంపెనీలో ఉద్యోగం (Job) కోరుకుంటున్నారా లేదా PM-AJAY టూల్‌కిట్ గ్రాంట్‌తో స్వయం ఉపాధి (Self-employment) పొందాలనుకుంటున్నారా?`,
-      suggestions: [
-        "నేను ఉద్యోగం (Job) కోరుకుంటున్నాను",
-        "నేను PM-AJAY టూల్‌కిట్ గ్రాంట్‌తో స్వయం ఉపాధి పొందాలనుకుంటున్నాను"
-      ]
+      prompt: () => "మీరు కంపెనీలో ఉద్యోగం కోరుకుంటున్నారా, లేదా PM-AJAY టూల్‌కిట్ గ్రాంట్‌తో స్వయం ఉపాధి పొందాలనుకుంటున్నారా?",
+      suggestions: ["PM-AJAY టూల్‌కిట్ గ్రాంట్‌తో స్వయం ఉపాధి", "కంపెనీలో ఉద్యోగం (Job)"]
+    },
+    confirm_summary: {
+      prompt: (p) => generateVerbalProfileSummary(p, 'Telugu'),
+      suggestions: ["అవును, సరైనదే", "కాదు, మార్చాలి"]
     },
     complete: {
-      prompt: (name, edu, skills, dist, state, age) =>
-        `అద్భుతం ${name || 'లబ్ధిదారు'} గారు! మీ అధికారిక PM-AJAY లబ్ధిదారు ఖాతా సిద్ధమైంది! విద్య: ${edu || '10th'}, నైపుణ్యం: ${skills || 'నైపుణ్యాలు'}, ప్రాంతం: ${dist || 'విజయనగరం'}, ${state || 'ఆంధ్రప్రదేశ్'}. మీ NSQF శిక్షణ మరియు ఉద్యోగ అవకాశాలను చూడటానికి క్రింది బటన్ నొక్కండి!`,
-      suggestions: [
-        "నా NSQF శిక్షణ మరియు ఉపాధి రోడ్‌మ్యాప్ చూపించండి",
-        "నేను ఏ PM-AJAY టూల్‌కిట్ గ్రాంట్‌కు అర్హుడిని?"
-      ]
+      prompt: (p) => `అద్భుతం ${p.name || 'లబ్ధిదారు'} గారు! మీ వివరాలు నమోదు చేయబడ్డాయి. మీ NSQF శిక్షణ అవకాశాలను ఇప్పుడు విశ్లేషిస్తున్నాను.`,
+      suggestions: ["నా అవకాశాలు చూపించండి", "టూల్‌కిట్ గ్రాంట్ వివరాలు"]
     }
   },
 
   'Hindi': {
-    name_age: {
-      prompt: () => "नमस्ते! मैं सक्षम AI हूँ, पीएम-अजय योजना के तहत आपका आवाज़ सहायक। कृपया अपना पूरा नाम और उम्र बताएं।",
-      suggestions: [
-        "राहुल, 25",
-        "मेरा नाम रवि कुमार, उम्र 26 वर्ष",
-        "मेरा नाम सुनीता देवी, उम्र 32 वर्ष"
-      ]
+    name: {
+      prompt: () => "नमस्ते! मैं सक्षम AI हूँ, पीएम-अजय योजना के तहत आपका आवाज़ सहायक। आपका पूरा नाम क्या है?",
+      suggestions: ["मेरा नाम सतील है", "मेरा नाम राहुल है", "सुनीता देवी"]
+    },
+    age: {
+      prompt: (p) => `नमस्ते ${p.name || 'मित्र'}! आपकी उम्र क्या है?`,
+      suggestions: ["उम्र 24 वर्ष", "26", "28 साल"]
+    },
+    dob: {
+      prompt: () => "धन्यवाद। आपकी जन्म तिथि क्या है?",
+      suggestions: ["15 अगस्त 2002", "15/08/2000", "12 जून 1998"]
     },
     education: {
-      prompt: (name, _edu, _skills, _dist, _state, age) =>
-        `धन्यवाद ${name || 'मित्र'}${age ? ` (उम्र ${age} वर्ष)` : ''}! आपकी पढ़ाई/शिक्षा कितनी हुई है? (जैसे: 8वीं पास, 10वीं पास, 12वीं पास, ITI या स्कूल नहीं गए)`,
-      suggestions: [
-        "10वीं पास (10th standard)",
-        "12वीं पास / इंटर (12th standard)",
-        "8वीं पास (8th Pass)",
-        "स्कूल नहीं गए (Below 8th)",
-        "आईटीआई / डिप्लोमा (ITI)"
-      ]
+      prompt: () => "आपकी उच्चतम शिक्षा कितनी है? (जैसे: 10वीं पास, 12वीं पास, स्नातक, आईटीआई)",
+      suggestions: ["10वीं पास", "12वीं पास / इंटर", "स्नातक (Graduate)", "आईटीआई / डिप्लोमा", "8वीं पास"]
     },
-    skills_exp: {
-      prompt: (name, edu) =>
-        `समझ गया, ${edu || 'शिक्षा'}! आपको कौन-सा काम या हुनर आता है, और कितने साल का अनुभव है? (जैसे: प्लंबिंग, सिलाई-कटाई, बिजली वायरिंग, कंप्यूटर, खेती)`,
-      suggestions: [
-        "मुझे प्लंबिंग का काम आता है, 2 साल का अनुभव",
-        "सिलाई-कटाई और टेलरिंग, 3 साल का अनुभव",
-        "कंप्यूटर, एमएस वर्ड और टाइपिंग",
-        "बिजली वायरिंग और मोटर रिपेयर"
-      ]
+    skills: {
+      prompt: () => "अच्छा, आपको कौन-सा काम या हुनर आता है?",
+      suggestions: ["सिलाई-कटाई और टेलरिंग", "प्लंबिंग का काम", "बिजली वायरिंग", "खेती और पोल्ट्री", "कंप्यूटर और टाइपिंग"]
+    },
+    experience: {
+      prompt: () => "आपको इस काम में कितने साल का कार्य अनुभव है?",
+      suggestions: ["2 साल का अनुभव", "3 साल", "1 साल", "अनुभव नहीं है"]
+    },
+    occupation: {
+      prompt: () => "वर्तमान में आप क्या काम करते हैं?",
+      suggestions: ["घर से सिलाई का काम", "इलेक्ट्रीशियन", "खेती", "बेरोजगार / काम की तलाश"]
     },
     location: {
-      prompt: (name, _edu, skills) =>
-        `बहुत बढ़िया${skills ? ` (${skills})` : ''}! आप किस राज्य और जिले में रहते हैं? (जैसे उत्तर प्रदेश, वाराणसी जिला या सीतापुर)`,
-      suggestions: [
-        "उत्तर प्रदेश, वाराणसी जिला",
-        "बिहार, गया जिला",
-        "उत्तर प्रदेश, सीतापुर जिला"
-      ]
+      prompt: () => "आप किस गाँव, शहर या जिले में रहते हैं?",
+      suggestions: ["वाराणसी", "सीतापुर", "गया", "पटना", "लखनऊ"]
     },
     livelihood_goal: {
-      prompt: (name, _edu, _skills, dist, state) =>
-        `दर्ज कर लिया (${dist || ''}, ${state || 'उत्तर प्रदेश'})! क्या आप मासिक वेतन वाली नौकरी (Job) चाहते हैं या PM-AJAY टूलकिट अनुदान के साथ अपना स्वरोजगार (Self-employment)?`,
-      suggestions: [
-        "मुझे नौकरी (Job) चाहिए",
-        "मुझे PM-AJAY टूलकिट अनुदान के साथ स्वरोजगार शुरू करना है"
-      ]
+      prompt: () => "आप नौकरी चाहते हैं, या पीएम-अजय टूलकिट अनुदान के साथ अपना स्वरोजगार?",
+      suggestions: ["PM-AJAY टूलकिट अनुदान के साथ स्वरोजगार", "मासिक वेतन वाली नौकरी (Job)"]
+    },
+    confirm_summary: {
+      prompt: (p) => generateVerbalProfileSummary(p, 'Hindi'),
+      suggestions: ["हाँ, सही है", "नहीं, बदलना है"]
     },
     complete: {
-      prompt: (name, edu, skills, dist, state, age) =>
-        `शानदार ${name || 'लाभार्थी'}! आपका आधिकारिक PM-AJAY लाभार्थी खाता तैयार है! दर्ज विवरण: नाम: ${name || ''}${age ? ` (उम्र ${age})` : ''}, शिक्षा: ${edu || '10वीं'}, कौशल: ${skills || 'हुनर'}, जिला: ${dist || 'वाराणसी'}, ${state || 'उत्तर प्रदेश'}। अपनी NSQF ट्रेनिंग और आजीविका योजना देखने के लिए नीचे बटन दबाएं!`,
-      suggestions: [
-        "मेरी व्यक्तिगत NSQF ट्रेनिंग योजना दिखाएं",
-        "मुझे कौन सा PM-AJAY टूलकिट अनुदान मिलेगा?"
-      ]
+      prompt: (p) => `शानदार ${p.name || 'लाभार्थी'}! आपकी जानकारी सत्यापित हो गई है और खाता पंजीकृत हो गया है।`,
+      suggestions: ["मेरी आजीविका योजना दिखाएं", "टूलकिट अनुदान जानकारी"]
+    }
+  },
+
+  'Kannada': {
+    name: {
+      prompt: () => "ನಮಸ್ಕಾರ! ನಾನು ಸಕ್ಷಮ್ AI, PM-AJAY ಧ್ವನಿ ಮಾರ್ಗದರ್ಶಿ. ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರು ಏನು?",
+      suggestions: ["ನನ್ನ ಹೆಸರು ಸತೀಲ್", "ಮಂಜುನಾಥ್", "ಸುನೀತಾ"]
+    },
+    age: {
+      prompt: (p) => `ನಮಸ್ಕಾರ ${p.name || 'ಸ್ನೇಹಿತರೆ'}! ನಿಮ್ಮ ವಯಸ್ಸು ಎಷ್ಟು?`,
+      suggestions: ["ವಯಸ್ಸು 24", "26", "28 ವರ್ಷ"]
+    },
+    dob: {
+      prompt: () => "ಧನ್ಯವಾದಗಳು. ನಿಮ್ಮ ಹುಟ್ಟಿದ ದಿನಾಂಕ ಯಾವುದು?",
+      suggestions: ["15 ಆಗಸ್ಟ್ 2002", "15/08/2000"]
+    },
+    education: {
+      prompt: () => "ನಿಮ್ಮ ವಿದ್ಯಾಭ್ಯಾಸ ಎಷ್ಟು ಆಗಿದೆ? (ಉದಾ: 10ನೇ ತರಗತಿ, ಪಿಯುಸಿ, ಪದವಿ, ITI)",
+      suggestions: ["10ನೇ ತರಗತಿ ಪಾಸ್", "ಪಿಯುಸಿ / 12ನೇ", "ಪದವಿ (Degree)", "ಐಟಿಐ / ಡಿಪ್ಲೋಮಾ"]
+    },
+    skills: {
+      prompt: () => "ಉತ್ತಮ. ನಿಮಗೆ ಯಾವ ಕೆಲಸ ಅಥವಾ ಕೌಶಲ್ಯ ಗೊತ್ತು?",
+      suggestions: ["ಟೈಲರಿಂಗ್ ಮತ್ತು ಹೊಲಿಗೆ", "ಪ್ಲಂಬಿಂಗ್ ಕೆಲಸ", "ಎಲೆಕ್ಟ್ರಿಕಲ್ ವೈರಿಂಗ್", "ಕೃಷಿ"]
+    },
+    experience: {
+      prompt: () => "ಈ ಕೆಲಸದಲ್ಲಿ ನಿಮಗೆ ಎಷ್ಟು ವರ್ಷಗಳ ಅನುಭವವಿದೆ?",
+      suggestions: ["2 ವರ್ಷಗಳ ಅನುಭವ", "3 ವರ್ಷ", "1 ವರ್ಷ", "ಅನುಭವವಿಲ್ಲ"]
+    },
+    occupation: {
+      prompt: () => "ಪ್ರಸ್ತುತ ನೀವು ಯಾವ ಕೆಲಸ ಮಾಡುತ್ತಿದ್ದೀರಿ?",
+      suggestions: ["ಮನೆಯಲ್ಲಿ ಹೊಲಿಗೆ ಕೆಲಸ", "ಎಲೆಕ್ಟ್ರಿಷಿಯನ್", "ಕೃಷಿ", "ಉದ್ಯೋಗ ಹುಡುಕುತ್ತಿದ್ದೇನೆ"]
+    },
+    location: {
+      prompt: () => "ನೀವು ಯಾವ ಊರು ಅಥವಾ ಜಿಲ್ಲೆಯಲ್ಲಿ ವಾಸಿಸುತ್ತಿದ್ದೀರಿ?",
+      suggestions: ["ಮೈಸೂರು", "ಬೆಂಗಳೂರು", "ಬೆಳಗಾವಿ", "ಕಲಬುರಗಿ"]
+    },
+    livelihood_goal: {
+      prompt: () => "ನೀವು ಉದ್ಯೋಗ ಬಯಸುತ್ತೀರಾ, ಅಥವಾ PM-AJAY ಟೂಲ್‌ಕಿಟ್ ಅನುದಾನದೊಂದಿಗೆ ಸ್ವಯಂ ಉದ್ಯೋಗ ಬಯಸುತ್ತೀರಾ?",
+      suggestions: ["PM-AJAY ಟೂಲ್‌ಕಿಟ್ ಅನುದಾನದೊಂದಿಗೆ ಸ್ವಯಂ ಉದ್ಯೋಗ", "ಉದ್ಯೋಗ (Job)"]
+    },
+    confirm_summary: {
+      prompt: (p) => generateVerbalProfileSummary(p, 'Kannada'),
+      suggestions: ["ಹೌದು, ಸರಿಯಾಗಿದೆ", "ಇಲ್ಲ, ಬದಲಾಯಿಸಬೇಕು"]
+    },
+    complete: {
+      prompt: (p) => `ಅದ್ಭುತ ${p.name || 'ಫಲಾನುಭವಿ'}! ನಿಮ್ಮ ವಿವರಗಳು ದೃಢೀಕರಿಸಲ್ಪಟ್ಟಿವೆ.`,
+      suggestions: ["ನನ್ನ ಅವಕಾಶಗಳನ್ನು ತೋರಿಸಿ", "ಟೂಲ್‌ಕಿಟ್ ವಿವರಗಳು"]
+    }
+  },
+
+  'Malayalam': {
+    name: {
+      prompt: () => "നമസ്കാരം! ഞാൻ സക്ഷം AI, PM-AJAY വോയ്‌സ് ഗൈഡ്. നിങ്ങളുടെ പൂർണ്ണ പേര് എന്താണ്?",
+      suggestions: ["എന്റെ പേര് സതീൽ", "വിഷ്ണു", "രമേഷ്"]
+    },
+    age: {
+      prompt: (p) => `നമസ്കാരം ${p.name || 'സുഹൃത്തേ'}! നിങ്ങളുടെ പ്രായം എത്രയാണ്?`,
+      suggestions: ["പ്രായം 24", "26", "28 വയസ്സ്"]
+    },
+    dob: {
+      prompt: () => "നന്ദി. നിങ്ങളുടെ ജനനത്തീയതി എന്താണ്?",
+      suggestions: ["15 ഓഗസ്റ്റ് 2002", "15/08/2000"]
+    },
+    education: {
+      prompt: () => "നിങ്ങളുടെ വിദ്യാഭ്യാസ യോഗ്യത എന്താണ്? (ഉദാ: 10-ാം ക്ലാസ്, പ്ലസ് ടു, ബിരുദം, ITI)",
+      suggestions: ["10-ാം ക്ലാസ് പാസ്", "പ്ലസ് ടു / 12th", "ബിരുദം (Degree)", "ഐടിഐ / ഡിപ്ലോമ"]
+    },
+    skills: {
+      prompt: () => "നല്ലത്. നിങ്ങൾക്ക് എന്തൊക്കെ തൊഴിൽ കഴിവുകൾ അറിയാം?",
+      suggestions: ["തയ്യൽ ജോലി", "പ്ലംബിംഗ് ജോലി", "ഇലക്ട്രിക്കൽ വയറിംഗ്", "കൃഷി"]
+    },
+    experience: {
+      prompt: () => "ഈ ജോലിയിൽ നിങ്ങൾക്ക് എത്ര വർഷത്തെ പരിചയമുണ്ട്?",
+      suggestions: ["2 വർഷത്തെ പരിചയം", "3 വർഷം", "1 വർഷം", "പരിചയമില്ല"]
+    },
+    occupation: {
+      prompt: () => "നിലവിൽ നിങ്ങൾ എന്ത് ജോലിയാണ് ചെയ്യുന്നത്?",
+      suggestions: ["വീട്ടിൽ തയ്യൽ ജോലി", "ഇലക്ട്രീഷ്യൻ", "കൃഷി", "ജോലി അന്വേഷിക്കുന്നു"]
+    },
+    location: {
+      prompt: () => "നിങ്ങൾ ഏത് ഗ്രാമം, നഗരം അല്ലെങ്കിൽ ജില്ലയിലാണ് താമസിക്കുന്നത്?",
+      suggestions: ["എറണാകുളം", "തിരുവനന്തപുരം", "കോഴിക്കോട്", "തൃശ്ശൂർ"]
+    },
+    livelihood_goal: {
+      prompt: () => "നിങ്ങൾക്ക് ശമ്പളമുള്ള ജോലി വേണോ, അതോ PM-AJAY ടൂൾകിറ്റ് ഗ്രാന്റോടെ സ്വയം തൊഴിൽ വേണോ?",
+      suggestions: ["PM-AJAY ടൂൾകിറ്റ് ഗ്രാന്റോടെ സ്വയം തൊഴിൽ", "ശമ്പളമുള്ള ജോലി (Job)"]
+    },
+    confirm_summary: {
+      prompt: (p) => generateVerbalProfileSummary(p, 'Malayalam'),
+      suggestions: ["അതെ, ശരിയാണ്", "അല്ല, മാറ്റണം"]
+    },
+    complete: {
+      prompt: (p) => `മികച്ചത് ${p.name || 'ഗുണഭോക്താവ്'}! നിങ്ങളുടെ വിവരങ്ങൾ സ്ഥിരീകരിച്ചു.`,
+      suggestions: ["എന്റെ അവസരങ്ങൾ കാണിക്കുക", "ടൂൾകിറ്റ് വിവരങ്ങൾ"]
     }
   },
 
   'Marathi': {
-    name_age: {
-      prompt: () => "नमस्ते! मी सक्षम-AI आहे, PM-AJAY योजनेतील तुमचा व्हॉईस मार्गदर्शक. कृपया आपले पूर्ण नाव आणि वय सांगा.",
-      suggestions: [
-        "सचिन, 24",
-        "माझे नाव राहुल, वय 26 वर्षे",
-        "माझे नाव सुनिता, वय 30 वर्षे"
-      ]
+    name: {
+      prompt: () => "नमस्ते! मी सक्षम AI आहे, PM-AJAY योजनेतील तुमचा व्हॉईस मार्गदर्शक. आपले पूर्ण नाव काय आहे?",
+      suggestions: ["माझे नाव सतील आहे", "सचिन", "राहुल"]
+    },
+    age: {
+      prompt: (p) => `नमस्ते ${p.name || 'मित्रा'}! आपले वय किती आहे?`,
+      suggestions: ["वय 24 वर्षे", "26", "28 वर्षे"]
+    },
+    dob: {
+      prompt: () => "धन्यवाद. आपली जन्मतारीख काय आहे?",
+      suggestions: ["15 ऑगस्ट 2002", "15/08/2000"]
     },
     education: {
-      prompt: (name, _edu, _skills, _dist, _state, age) =>
-        `धन्यवाद ${name || 'मित्रा'}${age ? ` (वय ${age} वर्षे)` : ''}! तुमचे शिक्षण किती झाले आहे? (उदा. 8वी पास, 10वी पास, 12वी पास, ITI किंवा शिक्षण झालेले नाही)`,
-      suggestions: [
-        "10वी पास (10th standard)",
-        "12वी पास (12th standard)",
-        "8वी पास (8th Pass)",
-        "शिक्षण झालेले नाही (Below 8th)",
-        "आयटीआय / डिप्लोमा"
-      ]
+      prompt: () => "आपले शिक्षण किती झाले आहे? (उदा: 10वी पास, 12वी पास, पदवीधर, ITI)",
+      suggestions: ["10वी पास", "12वी पास", "पदवीधर (Graduate)", "आयटीआय / डिप्लोमा", "8वी पास"]
     },
-    skills_exp: {
-      prompt: (name, edu) =>
-        `समजले, ${edu || 'शिक्षण'}! तुम्हाला कोणते कामाचे कौशल्य आणि किती वर्षांचा अनुभव आहे? (उदा. प्लंबिंग, शिवणकाम, वायरिंग, संगणक, शेती)`,
-      suggestions: [
-        "मला प्लंबिंगचे काम येते, 2 वर्षे अनुभव",
-        "टेलरिंग आणि शिवणकाम, 3 वर्षे अनुभव",
-        "संगणक, एमएस वर्ड आणि टायपिंग",
-        "इलेक्ट्रिकल वायरिंगचे काम"
-      ]
+    skills: {
+      prompt: () => "छान. आपल्याला कोणते कामाचे कौशल्य येते?",
+      suggestions: ["टेलरिंग आणि शिवणकाम", "प्लंबिंगचे काम", "इलेक्ट्रिकल वायरिंग", "शेती"]
+    },
+    experience: {
+      prompt: () => "या कामात आपल्याला किती वर्षांचा अनुभव आहे?",
+      suggestions: ["2 वर्षे अनुभव", "3 वर्षे", "1 वर्ष", "अनुभव नाही"]
+    },
+    occupation: {
+      prompt: () => "सध्या आपण काय काम करता?",
+      suggestions: ["घरी शिवणकाम", "इलेक्ट्रीशियन", "शेती", "नोकरी शोधत आहे"]
     },
     location: {
-      prompt: (name, _edu, skills) =>
-        `छान${skills ? ` (${skills})` : ''}! आपण कोणत्या राज्य आणि जिल्ह्यात राहता? (उदा. महाराष्ट्र, सोलापूर जिल्हा किंवा पुणे)`,
-      suggestions: [
-        "महाराष्ट्र, सोलापूर जिल्हा",
-        "महाराष्ट्र, पुणे जिल्हा",
-        "महाराष्ट्र, मुंबई"
-      ]
+      prompt: () => "आपण कोणत्या गाव, शहर किंवा जिल्ह्यात राहता?",
+      suggestions: ["सोलापूर", "पुणे", "मुंबई", "नागपूर"]
     },
     livelihood_goal: {
-      prompt: (name, _edu, _skills, dist, state) =>
-        `नोंदवले (${dist || ''}, ${state || 'महाराष्ट्र'})! तुम्हाला नोकरी (Job) हवी आहे की PM-AJAY टूलकिट अनुदानासह स्वतःचा व्यवसाय (Self-employment)?`,
-      suggestions: [
-        "मला नोकरी (Job) हवी आहे",
-        "मला PM-AJAY टूलकिट अनुदानासह स्वतःचा व्यवसाय सुरू करायचा आहे"
-      ]
+      prompt: () => "आपल्याला नोकरी हवी आहे की PM-AJAY टूलकिट अनुदानासह स्वतःचा व्यवसाय?",
+      suggestions: ["PM-AJAY टूलकिट अनुदानासह स्वतःचा व्यवसाय", "नोकरी (Job)"]
+    },
+    confirm_summary: {
+      prompt: (p) => generateVerbalProfileSummary(p, 'Marathi'),
+      suggestions: ["हो, बरोबर आहे", "नाही, बदलायचे आहे"]
     },
     complete: {
-      prompt: (name, edu, skills, dist, state, age) =>
-        `उत्तम ${name || 'लाभार्थी'}! तुमचे अधिकृत PM-AJAY खाते तयार झाले आहे! नाव: ${name || ''}${age ? ` (वय ${age})` : ''}, शिक्षण: ${edu || '10th'}, कौशल्ये: ${skills || 'कौशल्य'}, जिल्हा: ${dist || 'सोलापूर'}, ${state || 'महाराष्ट्र'}. तुमची NSQF प्रशिक्षण योजना पाहण्यासाठी खालील बटण दाबा!`,
-      suggestions: [
-        "माझी NSQF प्रशिक्षण आणि उपजीविका योजना दाखवा",
-        "मला कोणते PM-AJAY टूलकिट अनुदान मिळेल?"
-      ]
-    }
-  },
-
-  'English': {
-    name_age: {
-      prompt: () => "Namaste! I am SakshamAI, your PM-AJAY voice guide. Please tell me your full name and age.",
-      suggestions: [
-        "Yashwant, 24",
-        "My name is Yashwant, age 24",
-        "Hey I'm Akhil, age 26"
-      ]
-    },
-    education: {
-      prompt: (name, _edu, _skills, _dist, _state, age) =>
-        `Thank you ${name || 'friend'}${age ? ` (Age ${age})` : ''}! What is your educational qualification? (For example: 8th Pass, 10th Pass, 12th Pass, ITI, or did not attend school)`,
-      suggestions: [
-        "10th standard pass",
-        "12th standard pass",
-        "8th Pass",
-        "Did not attend school (Below 8th)",
-        "ITI / Diploma",
-        "Graduate & Above"
-      ]
-    },
-    skills_exp: {
-      prompt: (name, edu) =>
-        `Got it, ${edu || 'Education'}! What trade skills or work experience do you have, and how many years? (For example: Plumbing, Tailoring, Electrical, Computers, Farming)`,
-      suggestions: [
-        "Plumbing with 2 years of experience",
-        "Tailoring & Stitching with 3 years experience",
-        "MS Word & Excel computer skills",
-        "Electrical House Wiring & Testing",
-        "Organic Farming & Agriculture"
-      ]
-    },
-    location: {
-      prompt: (name, _edu, skills) =>
-        `Great${skills ? ` (${skills})` : ''}! Which State and District do you live in? (For example: Tamil Nadu Theni, Andhra Pradesh Vizianagaram, Uttar Pradesh Varanasi)`,
-      suggestions: [
-        "Tamil Nadu, Theni district",
-        "Andhra Pradesh, Vizianagaram",
-        "Uttar Pradesh, Varanasi",
-        "Maharashtra, Solapur"
-      ]
-    },
-    livelihood_goal: {
-      prompt: (name, _edu, _skills, dist, state) =>
-        `Recorded (${dist || ''}, ${state || 'India'})! Are you looking for a salaried Job in a company, or do you want to start Self-Employment with 100% PM-AJAY GIA equipment toolkit support?`,
-      suggestions: [
-        "I am looking for a salaried Job",
-        "I want Self-employment with PM-AJAY toolkit grant"
-      ]
-    },
-    complete: {
-      prompt: (name, edu, skills, dist, state, age) =>
-        `Awesome ${name || 'Beneficiary'}! Your official PM-AJAY Beneficiary Account is ready! We have recorded: Name: ${name || ''}${age ? ` (Age ${age})` : ''}, Education: ${edu || '10th Pass'}, Skills: ${skills || 'Trade Skills'}, Location: ${dist || 'District'}, ${state || 'State'}. Tap 'View Mapped Pathway' below to view your personalized NSQF training and verified job placements!`,
-      suggestions: [
-        "Show my NSQF Training & Livelihood Pathway",
-        "What PM-AJAY GIA toolkit grants am I eligible for?"
-      ]
+      prompt: (p) => `उत्तम ${p.name || 'लाभार्थी'}! आपली माहिती पडताळली गेली आहे आणि खाते तयार झाले आहे.`,
+      suggestions: ["माझ्या संधी दाखवा", "टूलकिट अनुदान माहिती"]
     }
   }
 };
 
 export async function POST(request: Request) {
   try {
-    const { message, language = 'English', currentProfile = {}, stage } = await request.json();
+    const { message, language = 'English', currentProfile = {}, stage = 'name' } = await request.json();
 
     const text = message ? message.trim() : '';
     const extractedFields = text ? extractProfileFromText(text, currentProfile) : {};
@@ -314,60 +366,140 @@ export async function POST(request: Request) {
     // Normalize selected language
     let langKey = 'English';
     const langLower = (language || '').toLowerCase();
-    
+
     if (langLower.includes('tamil') || language.includes('தமிழ்') || langLower.startsWith('ta')) langKey = 'Tamil';
     else if (langLower.includes('telugu') || language.includes('తెలుగు') || langLower.startsWith('te')) langKey = 'Telugu';
-    else if (langLower.includes('hindi') || language.includes('हिंदी') || langLower.startsWith('hi')) langKey = 'Hindi';
+    else if (langLower.includes('kannada') || language.includes('ಕನ್ನಡ') || langLower.startsWith('kn')) langKey = 'Kannada';
+    else if (langLower.includes('malayalam') || language.includes('മലയാളം') || langLower.startsWith('ml')) langKey = 'Malayalam';
     else if (langLower.includes('marathi') || language.includes('मराठी') || langLower.startsWith('mr')) langKey = 'Marathi';
-    else {
-      // Auto-detect native script from spoken message only if default English was selected
-      if (/[\u0B80-\u0BFF]/.test(text)) langKey = 'Tamil';
-      else if (/[\u0C00-\u0C7F]/.test(text)) langKey = 'Telugu';
-      else if (/[\u0900-\u097F]/.test(text)) {
-        if (text.includes('आहे') || text.includes('माझे') || text.includes('नाव') || text.includes('वर्षे')) {
-          langKey = 'Marathi';
+    else if (langLower.includes('hindi') || language.includes('हिंदी') || langLower.startsWith('hi')) langKey = 'Hindi';
+
+    const langPack = INTERACTIVE_DIALOGUE[langKey] || INTERACTIVE_DIALOGUE['English'];
+
+    // Contextual stage fallbacks: ensure active stage consumes the user's answer
+    if (text) {
+      if (stage === 'name' && !updatedProfile.name) {
+        const cleanedName = text.replace(/^(my\s+name\s+is|i\s+am|myself|i['’]m|என்\s+பெயர்|నా\s+పేరు|मेरा\s+नाम|ನನ್ನ\s+ಹೆಸರು|എന്റെ\s+പേര്|माझे\s+नाव)\s+/i, '').trim();
+        if (cleanedName.length >= 2 && !/^\d+$/.test(cleanedName)) {
+          updatedProfile.name = cleanedName.charAt(0).toUpperCase() + cleanedName.slice(1);
+        }
+      } else if (stage === 'age' && !updatedProfile.age) {
+        const numMatch = text.match(/\b(\d{1,2})\b/);
+        if (numMatch) {
+          const num = parseInt(numMatch[1], 10);
+          if (num >= 15 && num <= 75) updatedProfile.age = num;
+        }
+      } else if (stage === 'dob' && !updatedProfile.dob) {
+        const digits = text.match(/(\d{1,2})[\/\-\.\s](\d{1,2})[\/\-\.\s](\d{4})/);
+        if (digits) {
+          updatedProfile.dob = `${digits[1].padStart(2, '0')}/${digits[2].padStart(2, '0')}/${digits[3]}`;
+        }
+      } else if (stage === 'education' && !updatedProfile.education) {
+        if (/grad|degree|college|btech|bsc|bcom|ba/i.test(text)) updatedProfile.education = 'Graduate & Above';
+        else if (/iti|diploma/i.test(text)) updatedProfile.education = 'ITI / Diploma';
+        else if (/12|twelve|\+2|puc|inter/i.test(text)) updatedProfile.education = '12th Pass';
+        else if (/8|eight/i.test(text)) updatedProfile.education = '8th Pass';
+        else updatedProfile.education = '10th Pass';
+      } else if (stage === 'skills' && (!updatedProfile.existingSkills || updatedProfile.existingSkills.length === 0)) {
+        if (text.length >= 3) {
+          updatedProfile.existingSkills = [text.charAt(0).toUpperCase() + text.slice(1)];
+        }
+      } else if (stage === 'experience' && updatedProfile.workExperienceYears === undefined) {
+        const numMatch = text.match(/\b(\d{1,2})\b/);
+        if (numMatch) {
+          updatedProfile.workExperienceYears = parseInt(numMatch[1], 10);
+        } else if (/no|zero|fresher|none|இல்லை|లేదు|ಇಲ್ಲ|അല്ല|नहीं|नाही/i.test(text)) {
+          updatedProfile.workExperienceYears = 0;
         } else {
-          langKey = 'Hindi';
+          updatedProfile.workExperienceYears = 1;
+        }
+      } else if (stage === 'occupation' && !updatedProfile.currentOccupation) {
+        if (text.length >= 2) {
+          const cleanedOcc = text.replace(/^(i\s+work\s+as|i\s+do|currently\s+doing|my\s+work\s+is)\s+/i, '').trim();
+          updatedProfile.currentOccupation = cleanedOcc.charAt(0).toUpperCase() + cleanedOcc.slice(1);
+        }
+      } else if (stage === 'location' && !updatedProfile.district) {
+        if (text.length >= 3) {
+          const cleanedLoc = text.replace(/^(i\s+live\s+in|from|in|district)\s+/i, '').trim();
+          updatedProfile.district = cleanedLoc.charAt(0).toUpperCase() + cleanedLoc.slice(1);
+        }
+      } else if (stage === 'livelihood_goal' && !updatedProfile.preferredLivelihood) {
+        if (/self|business|shop|toolkit|grant|own|சுயதொழில்|స్వయం|स्वरोजगार|both/i.test(text)) {
+          updatedProfile.preferredLivelihood = 'Self-employment';
+          updatedProfile.careerGoal = 'Establish an independent enterprise with PM-AJAY 100% GIA toolkit grant.';
+        } else {
+          updatedProfile.preferredLivelihood = 'Job';
+          updatedProfile.careerGoal = 'Secure a salaried job with certified NSQF credentials.';
         }
       }
     }
 
-    const langPack = INTERACTIVE_DIALOGUE[langKey] || INTERACTIVE_DIALOGUE['English'];
+    // Voice Intent Detection (Yes/No/Repeat/Change)
+    const voiceIntent = text ? extractVoiceCommandIntent(text) : null;
 
-    // Stage progression strictly follows:
-    // 1. name_age -> 2. education -> 3. skills_exp -> 4. location -> 5. livelihood_goal -> 6. complete
-    let nextStage: DialogueStage = 'name_age';
+    // Strict sequential 10-stage evaluation
+    let nextStage: DialogueStage = 'name';
 
-    const hasName = updatedProfile.name && !['Ravi Kumar', 'Sunil', 'Demo User'].includes(updatedProfile.name);
-    const hasEducation = updatedProfile.education;
-    const hasSkills = updatedProfile.existingSkills && updatedProfile.existingSkills.length > 0;
-    const hasLocation = updatedProfile.district && updatedProfile.state;
-    const hasGoal = updatedProfile.preferredLivelihood;
-
-    if (!hasName) {
-      nextStage = 'name_age';
-    } else if (!hasEducation) {
-      nextStage = 'education';
-    } else if (!hasSkills) {
-      nextStage = 'skills_exp';
-    } else if (!hasLocation) {
+    if (stage === 'confirm_summary') {
+      if (voiceIntent === 'CONFIRM_YES') {
+        nextStage = 'complete';
+      } else if (voiceIntent === 'CONFIRM_NO') {
+        nextStage = 'name';
+      } else {
+        nextStage = 'confirm_summary';
+      }
+    } else if (voiceIntent === 'CHANGE_AGE') {
+      nextStage = 'age';
+    } else if (voiceIntent === 'CHANGE_LOCATION') {
       nextStage = 'location';
-    } else if (!hasGoal) {
-      nextStage = 'livelihood_goal';
+    } else if (voiceIntent === 'CHANGE_SKILL') {
+      nextStage = 'skills';
     } else {
-      nextStage = 'complete';
+      // Find the next missing field in strict order:
+      // 1. Name
+      if (!updatedProfile.name) {
+        nextStage = 'name';
+      }
+      // 2. Age
+      else if (!updatedProfile.age) {
+        nextStage = 'age';
+      }
+      // 3. Date of Birth
+      else if (!updatedProfile.dob) {
+        nextStage = 'dob';
+      }
+      // 4. Education
+      else if (!updatedProfile.education) {
+        nextStage = 'education';
+      }
+      // 5. Skills
+      else if (!updatedProfile.existingSkills || updatedProfile.existingSkills.length === 0) {
+        nextStage = 'skills';
+      }
+      // 6. Experience
+      else if (updatedProfile.workExperienceYears === undefined || updatedProfile.workExperienceYears === null) {
+        nextStage = 'experience';
+      }
+      // 7. Current Occupation
+      else if (!updatedProfile.currentOccupation) {
+        nextStage = 'occupation';
+      }
+      // 8. Location
+      else if (!updatedProfile.district && !updatedProfile.state) {
+        nextStage = 'location';
+      }
+      // 9. Livelihood Goal
+      else if (!updatedProfile.preferredLivelihood) {
+        nextStage = 'livelihood_goal';
+      }
+      // 10. All collected -> Confirmation
+      else {
+        nextStage = 'confirm_summary';
+      }
     }
 
-    const stageConfig = langPack[nextStage];
-    const skillsSummary = (updatedProfile.existingSkills || []).slice(0, 2).join(', ');
-    const assistantResponseText = stageConfig.prompt(
-      updatedProfile.name,
-      updatedProfile.education,
-      skillsSummary,
-      updatedProfile.district,
-      updatedProfile.state,
-      updatedProfile.age
-    );
+    const stageConfig = langPack[nextStage] || langPack['name'];
+    const assistantResponseText = stageConfig.prompt(updatedProfile);
 
     return NextResponse.json({
       success: true,
@@ -377,7 +509,8 @@ export async function POST(request: Request) {
         language: langKey,
         extractedFields,
         updatedProfile,
-        suggestedPrompts: stageConfig.suggestions
+        suggestedPrompts: stageConfig.suggestions,
+        isConfirmed: nextStage === 'complete'
       }
     });
 
@@ -386,5 +519,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to process voice assistant chat', details: error.message }, { status: 500 });
   }
 }
-
-

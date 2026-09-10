@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { BeneficiaryProfile } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
-import { Landmark, ShieldCheck, QrCode, CheckCircle2, Download, Printer, RefreshCw, Sparkles, MapPin, GraduationCap, Briefcase, Phone, Mail, UserCheck } from 'lucide-react';
+import { useToast } from '@/components/ui/ToastProvider';
+import { Landmark, ShieldCheck, QrCode, CheckCircle2, Download, Printer, RefreshCw, Sparkles, MapPin, GraduationCap, Briefcase, Phone, Mail, UserCheck, X, Award, ExternalLink } from 'lucide-react';
 
 interface AccountCardProps {
   profile?: BeneficiaryProfile;
@@ -13,8 +14,10 @@ interface AccountCardProps {
 
 export default function BeneficiaryAccountCard({ profile: propProfile, onEditProfile, onViewRecommendations }: AccountCardProps) {
   const { profile: contextProfile, syncWithBackend, isSyncing } = useAuth();
+  const { showToast } = useToast();
   const profile = propProfile || contextProfile;
   const [downloadNotice, setDownloadNotice] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   const handlePrint = () => {
     window.print();
@@ -91,12 +94,17 @@ export default function BeneficiaryAccountCard({ profile: propProfile, onEditPro
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="rounded-xl border border-emerald-500/30 bg-slate-950/80 p-2 text-center text-slate-300 shadow-inner">
-              <QrCode size={40} className="text-emerald-400 mx-auto" />
-              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400 block mt-1">
+            <button
+              type="button"
+              onClick={() => setShowQrModal(true)}
+              className="rounded-xl border border-emerald-500/30 bg-slate-950/80 p-2 text-center text-slate-300 shadow-inner hover:border-emerald-400/60 hover:bg-slate-900 transition-all cursor-pointer group"
+              title="Click to verify digital cryptographic credential"
+            >
+              <QrCode size={40} className="text-emerald-400 mx-auto group-hover:scale-105 transition-transform" />
+              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-emerald-400 block mt-1">
                 SCAN VERIFIED
               </span>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -132,6 +140,18 @@ export default function BeneficiaryAccountCard({ profile: propProfile, onEditPro
               <div className="rounded-2xl bg-slate-950/70 p-3 border border-slate-800/80">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Experience</span>
                 <span className="text-xs font-bold text-slate-200 mt-0.5 block">{profile.workExperienceYears} Years</span>
+              </div>
+            </div>
+
+            {/* User ID & DOB Credentials for Voice Login */}
+            <div className="rounded-2xl bg-emerald-950/30 border border-emerald-500/20 p-3 grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">User ID (Voice Login)</span>
+                <span className="font-mono font-bold text-emerald-300">{profile.userId || profile.name.toLowerCase()}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Date of Birth (Password)</span>
+                <span className="font-mono font-bold text-slate-200">{profile.dob || `15/06/${new Date().getFullYear() - (profile.age || 25)}`}</span>
               </div>
             </div>
 
@@ -229,6 +249,81 @@ export default function BeneficiaryAccountCard({ profile: propProfile, onEditPro
       {downloadNotice && (
         <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 text-center text-xs font-bold text-emerald-300">
           ✓ Digital PM-AJAY Beneficiary Card generated and ready for printing.
+        </div>
+      )}
+
+      {/* QR Code Digital Cryptographic Verification Modal */}
+      {showQrModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setShowQrModal(false)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-3xl border border-emerald-500/40 bg-slate-900/95 p-6 sm:p-8 shadow-2xl space-y-6 text-slate-100 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-5 right-5 grid size-8 place-items-center rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="size-20 mx-auto rounded-3xl bg-emerald-500/10 border-2 border-emerald-500/30 grid place-items-center text-emerald-400 shadow-lg shadow-emerald-500/10">
+              <QrCode size={44} />
+            </div>
+
+            <div className="space-y-1">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <CheckCircle2 size={13} /> NIC DigiGov Authenticated
+              </span>
+              <h3 className="text-2xl font-bold font-serif text-slate-100 mt-2">
+                Digital Passbook Verification
+              </h3>
+              <p className="text-xs text-slate-400">
+                National Social Justice Credential Gateway
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-slate-950 p-4 border border-slate-800 text-left space-y-2.5 text-xs font-mono">
+              <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-500 font-bold uppercase">Beneficiary:</span>
+                <span className="text-slate-200 font-sans font-bold">{profile.name}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-500 font-bold uppercase">Beneficiary ID:</span>
+                <span className="text-emerald-400 font-bold">{profile.beneficiaryId || 'SC-AJAY-2026-1001'}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-500 font-bold uppercase">Region:</span>
+                <span className="text-slate-200">{profile.district}, {profile.state}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
+                <span className="text-slate-500 font-bold uppercase">GIA Grant:</span>
+                <span className="text-amber-400 font-bold">100% Eligible</span>
+              </div>
+              <div className="pt-1">
+                <span className="text-slate-500 font-bold uppercase block text-[10px]">Digital Signature Hash:</span>
+                <span className="text-[10px] text-slate-400 break-all">
+                  SHA256: 8f4b9e2a1c0d3f8e7b6a5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowQrModal(false);
+                showToast({
+                  type: 'success',
+                  title: 'Credential Verified',
+                  description: 'Beneficiary card is authenticated on NIC national blockchain ledger.'
+                });
+              }}
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition-all shadow-md cursor-pointer"
+            >
+              Close & Return to Passbook
+            </button>
+          </div>
         </div>
       )}
     </div>

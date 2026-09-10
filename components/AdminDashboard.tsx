@@ -2,10 +2,42 @@
 
 import React, { useState, useEffect } from 'react';
 import { AdminAnalyticsData } from '@/lib/types';
-import { BarChart3, Users, Landmark, GraduationCap, TrendingUp, AlertTriangle, MapPin, Search, Download, Filter, ShieldCheck, Sparkles, IndianRupee, Lock, Eye, EyeOff, LogOut, KeyRound, CheckCircle2 } from 'lucide-react';
+import { getDistrictOpportunityStats } from '@/lib/opportunity-matcher';
+import { OPPORTUNITIES_DATASET, DISTRICT_CENTROIDS } from '@/lib/opportunity-data';
+import {
+  BarChart3,
+  Users,
+  Landmark,
+  GraduationCap,
+  TrendingUp,
+  AlertTriangle,
+  MapPin,
+  Search,
+  Download,
+  Filter,
+  ShieldCheck,
+  Sparkles,
+  IndianRupee,
+  Lock,
+  Eye,
+  EyeOff,
+  LogOut,
+  KeyRound,
+  CheckCircle2,
+  Layers,
+  Compass,
+  Briefcase,
+  Award,
+  Activity,
+  Flame,
+  FileCheck
+} from 'lucide-react';
+import AdminApprovalSection from './AdminApprovalSection';
+import AnimatedCounter from './ui/AnimatedCounter';
 
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [activeAdminTab, setActiveAdminTab] = useState<'analytics' | 'approvals' | 'heatmaps'>('analytics');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,6 +48,20 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedDistrict, setSelectedDistrict] = useState('All');
   const [selectedEducation, setSelectedEducation] = useState('All');
+  const [selectedHeatmapDistrict, setSelectedHeatmapDistrict] = useState<string>('Theni');
+
+  const districtStatsMap = getDistrictOpportunityStats();
+  const currentDistrictMetrics = districtStatsMap[selectedHeatmapDistrict] || {
+    district: selectedHeatmapDistrict,
+    state: 'Tamil Nadu',
+    total: 6,
+    training: 2,
+    job: 2,
+    apprenticeship: 1,
+    livelihood: 2,
+    topSkills: ['Agriculture', 'Tailoring', 'Food Processing', 'Electrical'],
+    density: 'High'
+  };
 
   // Check persistent session in sessionStorage
   useEffect(() => {
@@ -238,71 +284,103 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="grid size-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-400">
-              <Users size={20} />
-            </span>
-            <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-              100% SC Beneficiaries
-            </span>
-          </div>
-          <p className="text-3xl font-bold font-serif text-slate-100 mt-4">
-            {data.totalBeneficiaries.toLocaleString()}
-          </p>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Beneficiaries Mapped</p>
-        </div>
-
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="grid size-10 place-items-center rounded-xl bg-amber-500/10 text-amber-400">
-              <IndianRupee size={20} />
-            </span>
-            <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-              GIA Component
-            </span>
-          </div>
-          <p className="text-3xl font-bold font-serif text-slate-100 mt-4">
-            ₹{(data.totalGiaGrantAllocatedINR / 10000000).toFixed(2)} Cr
-          </p>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">GIA Grant Fund Allocated</p>
-        </div>
-
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="grid size-10 place-items-center rounded-xl bg-teal-500/10 text-teal-400">
-              <GraduationCap size={20} />
-            </span>
-            <span className="text-[11px] font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded">
-              NCVET NSQF
-            </span>
-          </div>
-          <p className="text-3xl font-bold font-serif text-slate-100 mt-4">
-            {data.nsqfCoursesRecommended.toLocaleString()}
-          </p>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">NSQF Courses Recommended</p>
-        </div>
-
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="grid size-10 place-items-center rounded-xl bg-rose-500/10 text-rose-400">
-              <AlertTriangle size={20} />
-            </span>
-            <span className="text-[11px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded">
-              Action Required
-            </span>
-          </div>
-          <p className="text-3xl font-bold font-serif text-slate-100 mt-4">
-            {data.skillGapsIdentified.toLocaleString()}
-          </p>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Skill Gaps Mapped</p>
-        </div>
+      {/* Admin Navigation Tabs */}
+      <div className="flex gap-3 overflow-x-auto border-b border-slate-800 pb-2">
+        {[
+          { id: 'analytics', label: 'M&E Analytics & Overview', icon: BarChart3 },
+          { id: 'approvals', label: 'Grant Applications & Approvals (Nodal Workflow)', icon: FileCheck },
+          { id: 'heatmaps', label: 'District Opportunity Density & Skill Gap Matrix', icon: Flame }
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeAdminTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveAdminTab(tab.id as any)}
+              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                isActive
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              <Icon size={16} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-900 p-4 border border-slate-800">
+      {activeAdminTab === 'approvals' && (
+        <AdminApprovalSection />
+      )}
+
+      {activeAdminTab === 'analytics' && (
+        <div className="space-y-8">
+          {/* Metric Cards */}
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="grid size-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <Users size={20} />
+                </span>
+                <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                  100% SC Beneficiaries
+                </span>
+              </div>
+              <p className="text-3xl font-bold font-serif text-slate-100 mt-4">
+                <AnimatedCounter end={data.totalBeneficiaries} duration={1200} />
+              </p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Beneficiaries Mapped</p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="grid size-10 place-items-center rounded-xl bg-amber-500/10 text-amber-400">
+                  <IndianRupee size={20} />
+                </span>
+                <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                  GIA Component
+                </span>
+              </div>
+              <p className="text-3xl font-bold font-serif text-slate-100 mt-4">
+                ₹<AnimatedCounter end={Number((data.totalGiaGrantAllocatedINR / 10000000).toFixed(2))} decimals={2} duration={1200} /> Cr
+              </p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">GIA Grant Fund Allocated</p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="grid size-10 place-items-center rounded-xl bg-teal-500/10 text-teal-400">
+                  <GraduationCap size={20} />
+                </span>
+                <span className="text-[11px] font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded">
+                  NCVET NSQF
+                </span>
+              </div>
+              <p className="text-3xl font-bold font-serif text-slate-100 mt-4">
+                <AnimatedCounter end={data.nsqfCoursesRecommended} duration={1200} />
+              </p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">NSQF Courses Recommended</p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="grid size-10 place-items-center rounded-xl bg-rose-500/10 text-rose-400">
+                  <AlertTriangle size={20} />
+                </span>
+                <span className="text-[11px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded">
+                  Action Required
+                </span>
+              </div>
+              <p className="text-3xl font-bold font-serif text-slate-100 mt-4">
+                <AnimatedCounter end={data.skillGapsIdentified} duration={1200} />
+              </p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Skill Gaps Mapped</p>
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-900 p-4 border border-slate-800">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
           <Filter size={15} className="text-emerald-400" />
           <span>Analytics Filters:</span>
@@ -462,6 +540,193 @@ export default function AdminDashboard() {
           </table>
         </div>
       </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* LOCATION-BASED DISTRICT OPPORTUNITY ANALYTICS & SPATIAL HEATMAP */}
+      {/* ============================================================ */}
+      {(activeAdminTab === 'heatmaps' || activeAdminTab === 'analytics') && (
+      <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 sm:p-8 space-y-8 shadow-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+              <Compass size={14} />
+              <span>Spatial Analytics & Livelihood Heatmap</span>
+            </div>
+            <h2 className="mt-2 text-2xl font-bold font-serif text-slate-100">
+              District-Level Opportunity Mapping & Skill Gap Zones
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Geographic opportunity density, training availability, wage employment vacancies, and supply-demand mismatches across key PM-AJAY intervention districts.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-400">Select Focus District:</span>
+            <select
+              value={selectedHeatmapDistrict}
+              onChange={(e) => setSelectedHeatmapDistrict(e.target.value)}
+              className="rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs font-bold text-emerald-300 outline-none focus:border-emerald-500 cursor-pointer"
+            >
+              <option value="Theni">Theni (Tamil Nadu - Focus)</option>
+              <option value="Madurai">Madurai (Tamil Nadu)</option>
+              <option value="Dindigul">Dindigul (Tamil Nadu)</option>
+              <option value="Coimbatore">Coimbatore (Tamil Nadu)</option>
+              <option value="Tiruppur">Tiruppur (Tamil Nadu)</option>
+              <option value="Chennai">Chennai (Tamil Nadu)</option>
+              <option value="Salem">Salem (Tamil Nadu)</option>
+              <option value="Erode">Erode (Tamil Nadu)</option>
+              <option value="Vizianagaram">Vizianagaram (Andhra Pradesh)</option>
+              <option value="Vijayawada">Vijayawada (Andhra Pradesh)</option>
+              <option value="Guntur">Guntur (Andhra Pradesh)</option>
+              <option value="Tirupati">Tirupati (Andhra Pradesh)</option>
+              <option value="Bengaluru">Bengaluru (Karnataka)</option>
+              <option value="Mysuru">Mysuru (Karnataka)</option>
+              <option value="Kochi">Kochi (Kerala)</option>
+              <option value="Thiruvananthapuram">Thiruvananthapuram (Kerala)</option>
+              <option value="Sitapur">Sitapur (Uttar Pradesh)</option>
+              <option value="Gaya">Gaya (Bihar)</option>
+              <option value="Solapur">Solapur (Maharashtra)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Selected District Opportunity Metric Grid */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Opportunities</p>
+            <p className="text-2xl font-bold font-serif text-slate-100">{currentDistrictMetrics.total}</p>
+            <span className="text-[10px] text-slate-500">{selectedHeatmapDistrict} Region</span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1">
+              <GraduationCap size={12} /> Training Centers
+            </p>
+            <p className="text-2xl font-bold font-serif text-blue-300">{currentDistrictMetrics.training}</p>
+            <span className="text-[10px] text-slate-500">NSQF Accredited Facilities</span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+              <Briefcase size={12} /> Wage Jobs
+            </p>
+            <p className="text-2xl font-bold font-serif text-emerald-300">{currentDistrictMetrics.job}</p>
+            <span className="text-[10px] text-slate-500">Verified MSME / Industry</span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+              <Award size={12} /> Apprenticeships
+            </p>
+            <p className="text-2xl font-bold font-serif text-amber-300">{currentDistrictMetrics.apprenticeship}</p>
+            <span className="text-[10px] text-slate-500">Stipend Supported (NAPS)</span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1">
+              <Sparkles size={12} /> Livelihood Units
+            </p>
+            <p className="text-2xl font-bold font-serif text-purple-300">{currentDistrictMetrics.livelihood}</p>
+            <span className="text-[10px] text-slate-500">PM-AJAY GIA Grant Linked</span>
+          </div>
+        </div>
+
+        {/* Most Demanded Skills & Heatmap Row */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Most Demanded Skills in District */}
+          <div className="rounded-2xl bg-slate-950 p-5 border border-slate-800 space-y-4">
+            <h3 className="text-sm font-bold font-serif text-slate-100 flex items-center justify-between">
+              <span>Top Demanded Skills in {selectedHeatmapDistrict}</span>
+              <span className="text-[11px] font-mono text-emerald-400">Ranked by Openings</span>
+            </h3>
+
+            <div className="space-y-2.5">
+              {currentDistrictMetrics.topSkills.map((sk: string, i: number) => (
+                <div key={sk} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-5 place-items-center rounded bg-emerald-500/10 text-emerald-400 font-bold text-[10px]">
+                      0{i + 1}
+                    </span>
+                    <span className="font-semibold text-slate-200">{sk}</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono">High Demand Priority</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Spatial Opportunity Density & Gap Alert */}
+          <div className="rounded-2xl bg-slate-950 p-5 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold font-serif text-slate-100 flex items-center gap-2">
+                <Flame size={16} className="text-amber-400" />
+                <span>Opportunity Density & Skill Gap Zone</span>
+              </h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                currentDistrictMetrics.density === 'High'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              }`}>
+                {currentDistrictMetrics.density} Density Zone
+              </span>
+            </div>
+
+            {/* Regional Diagnosis */}
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+              <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle size={13} />
+                <span>Identified Regional Mismatch & Recommendation:</span>
+              </p>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {selectedHeatmapDistrict === 'Theni'
+                  ? 'Theni District exhibits high tailoring skill availability (68% SC beneficiary baseline) but limited formal industrial garment factory vacancies within 15 km. High-impact intervention: Prioritize PM-AJAY GIA self-employment toolkits, motorized sewing machine subsidies, and rural boutique cluster linkages.'
+                  : selectedHeatmapDistrict === 'Tiruppur'
+                  ? 'Tiruppur garment export hub has massive workforce demand for certified overlock and flatlock sewing operators (3,200+ vacancies). Recommended intervention: Establish fast-track 300-hour NSQF Level 4 training pipelines with direct placement guarantees.'
+                  : `${selectedHeatmapDistrict} district requires balanced funding towards NSQF Level 3-4 skill certification and GIA equipment toolkits to match local MSME market demand.`}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* District Opportunity Heatmap Matrix */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold font-serif text-slate-100 flex items-center justify-between">
+            <span>All-Districts Opportunity Density & Readiness Matrix</span>
+            <span className="text-[11px] text-slate-400 font-normal">Active Nodal Zones</span>
+          </h3>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
+            {Object.keys(districtStatsMap).map((distKey) => {
+              const dStat = districtStatsMap[distKey];
+              const isSelected = selectedHeatmapDistrict === distKey;
+              return (
+                <button
+                  key={distKey}
+                  type="button"
+                  onClick={() => setSelectedHeatmapDistrict(distKey)}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-950/40 ring-2 ring-emerald-500/20'
+                      : 'border-slate-800 bg-slate-950 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-200">{distKey}</span>
+                    <span className={`size-2 rounded-full ${dStat.density === 'High' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">{dStat.state}</p>
+                  <p className="text-xs font-mono font-bold text-emerald-400 mt-2">
+                    {dStat.total} Opportunities
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      )}
     </div>
   );
 }

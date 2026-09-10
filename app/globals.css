@@ -1,18 +1,249 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+
   body {
     background-color: #020617;
     color: #f8fafc;
-    font-family: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+}
+
+/* -------------------------------------------------------------
+   Custom Animations & Keyframes
+   ------------------------------------------------------------- */
+
+@keyframes blob {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+}
+
+@keyframes blob-reverse {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(-30px, 40px) scale(1.08);
+  }
+  66% {
+    transform: translate(25px, -25px) scale(0.92);
+  }
+}
+
+@keyframes orb-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.4), inset 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 45px rgba(16, 185, 129, 0.65), 0 0 80px rgba(20, 184, 166, 0.35), inset 0 0 30px rgba(52, 211, 153, 0.5);
+  }
+}
+
+@keyframes orb-listening {
+  0%, 100% {
+    transform: scale(1.02);
+    box-shadow: 0 0 35px rgba(244, 63, 94, 0.4), 0 0 70px rgba(251, 113, 133, 0.25);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 60px rgba(244, 63, 94, 0.7), 0 0 110px rgba(244, 63, 94, 0.4);
+  }
+}
+
+@keyframes orb-processing {
+  0% {
+    transform: rotate(0deg) scale(1.02);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.08);
+  }
+  100% {
+    transform: rotate(360deg) scale(1.02);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes float-particle {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-20px) translateX(10px) scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0.3;
   }
 }
 
 @keyframes wave {
-  0%, 100% { height: 8px; }
+  0%, 100% { height: 6px; }
   50% { height: 32px; }
+}
+
+@keyframes wave-fast {
+  0%, 100% { height: 8px; }
+  50% { height: 42px; }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* -------------------------------------------------------------
+   Animation Utility Classes
+   ------------------------------------------------------------- */
+
+.animate-blob {
+  animation: blob 12s infinite ease-in-out;
+}
+
+.animate-blob-reverse {
+  animation: blob-reverse 15s infinite ease-in-out;
+}
+
+.animate-blob-slow {
+  animation: blob 20s infinite ease-in-out;
+}
+
+.animate-orb-pulse {
+  animation: orb-pulse 3s infinite ease-in-out;
+}
+
+.animate-orb-listening {
+  animation: orb-listening 1.5s infinite ease-in-out;
+}
+
+.animate-orb-processing {
+  animation: orb-processing 4s infinite linear;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 18s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 22s linear infinite;
+}
+
+.animate-float-particle {
+  animation: float-particle 6s infinite ease-in-out;
 }
 
 .animate-wave {
   animation: wave 1.2s ease-in-out infinite;
+}
+
+.animate-wave-fast {
+  animation: wave-fast 0.8s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite;
+}
+
+/* -------------------------------------------------------------
+   Glassmorphism & Texture Utilities
+   ------------------------------------------------------------- */
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card-emerald {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.25) 0%, rgba(15, 23, 42, 0.85) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.glass-card-amber {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.25) 0%, rgba(15, 23, 42, 0.85) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* Subtle tech grid pattern */
+.bg-grid-tech {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* -------------------------------------------------------------
+   Accessibility: Reduced Motion Preference
+   ------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

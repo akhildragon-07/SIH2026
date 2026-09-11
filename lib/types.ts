@@ -27,6 +27,7 @@ export interface BeneficiaryProfile {
   gender: 'Male' | 'Female' | 'Other';
   state: string;
   district: string;
+  location?: string;
   areaType: 'Rural' | 'Urban' | 'Semi-Urban';
   education: EducationLevel;
   currentOccupation: string;
@@ -34,6 +35,7 @@ export interface BeneficiaryProfile {
   workExperienceYears: number;
   monthlyIncome: string;
   preferredLivelihood: LivelihoodType;
+  interest?: string;
   interests: string[];
   careerGoal: string;
   preferredLanguage?: string;
@@ -172,27 +174,52 @@ export type OpportunityCareerGoal = 'job' | 'self-employment' | 'entrepreneurshi
 
 export interface Opportunity {
   id: string;
+  opportunity_id?: string;
   name: string;
+  title?: string;
   type: OpportunityType;
+  livelihood_type?: string;
+  livelihoodType?: string;
   state: string;
   district: string;
+  block?: string;
   city: string;
+  organization?: string;
+  sector?: string;
+  jobRole?: string;
+  job_role?: string;
+  opportunity_type?: string;
   latitude: number;
   longitude: number;
   skills: string[];
+  required_skills?: string[];
   educationRequired?: string;
+  min_education?: string;
+  minimum_education?: string;
   nsqfLevel?: number;
+  nsqf_level?: number;
+  salary_min?: number;
+  salary_max?: number;
+  openings?: number;
+  training_available?: boolean;
+  training_provider?: string;
   courseName?: string;
   provider?: string;
   careerGoal: OpportunityCareerGoal;
   estimatedMonthlyIncome?: number;
+  salary_or_stipend?: number | string;
   distanceKm?: number;
   eligibility?: string[];
   description?: string;
   contactPhone?: string;
   contactEmail?: string;
+  contact?: string;
   address?: string;
+  source?: string;
+  last_updated?: string;
   isVerified?: boolean;
+  is_verified_government?: boolean;
+  isVerifiedGovernmentData?: boolean;
 }
 
 export interface ExplainableMatchScore {
@@ -210,11 +237,22 @@ export interface OpportunityMatchResult extends Opportunity {
   explainableScore: ExplainableMatchScore;
   calculatedDistanceKm: number;
   isWithinRadius: boolean;
+  isDistrictMatch?: boolean;
 }
 
 export interface OpportunityFilterState {
-  type: 'all' | OpportunityType | 'self-employment' | 'enterprise';
-  radiusKm: number; // 5, 10, 25, 50
+  type: 'all' | OpportunityType | 'self-employment' | 'enterprise' | string;
+  radiusKm: number; // 0 (all), 5, 10, 25, 50, 100
+  state?: string; // 'all' or state name
+  district?: string; // 'all' or district name
+  sector?: string; // 'all' or sector name
+  jobRole?: string; // 'all' or job role
+  nsqfLevel?: number | 'all';
+  minSalary?: number;
+  maxSalary?: number;
+  salaryMin?: number;
+  salaryMax?: number;
+  onlyMyDistrict?: boolean;
   skill: string; // 'all' or specific skill
   careerGoal: 'all' | 'job' | 'self-employment' | 'entrepreneurship';
   searchQuery: string;

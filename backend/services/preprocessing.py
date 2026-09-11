@@ -46,7 +46,22 @@ def load_and_preprocess_dataset(csv_path: str = DATASET_PATH) -> pd.DataFrame:
     df['experience_years'] = pd.to_numeric(df['experience_years'], errors='coerce').fillna(0)
     df['existing_skills_list'] = df['existing_skills'].apply(parse_skills_string)
     df['recommended_skills_list'] = df['recommended_skills'].apply(parse_skills_string)
-    df['skill_gaps_list'] = df['skill_gaps_demo'].apply(parse_skills_string)
-    df['education_rank'] = df['minimum_education_demo'].apply(get_education_rank)
+    
+    # Handle both new column names and legacy _demo names
+    skill_gap_col = 'skill_gaps' if 'skill_gaps' in df.columns else ('skill_gaps_demo' if 'skill_gaps_demo' in df.columns else 'recommended_skills')
+    df['skill_gaps_list'] = df[skill_gap_col].apply(parse_skills_string)
+    
+    min_edu_col = 'minimum_education' if 'minimum_education' in df.columns else ('minimum_education_demo' if 'minimum_education_demo' in df.columns else 'education')
+    df['education_rank'] = df[min_edu_col].apply(get_education_rank)
+    
+    if 'minimum_education_demo' not in df.columns and 'minimum_education' in df.columns:
+        df['minimum_education_demo'] = df['minimum_education']
+    if 'nsqf_level_demo' not in df.columns and 'nsqf_level' in df.columns:
+        df['nsqf_level_demo'] = df['nsqf_level']
+    if 'job_role_demo' not in df.columns and 'job_role' in df.columns:
+        df['job_role_demo'] = df['job_role']
+    if 'livelihood_type_demo' not in df.columns and 'livelihood_type' in df.columns:
+        df['livelihood_type_demo'] = df['livelihood_type']
 
     return df
+

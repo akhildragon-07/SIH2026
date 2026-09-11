@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BeneficiaryProfile, EducationLevel, LivelihoodType } from '@/lib/types';
 import { useAuth } from '@/lib/auth-context';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from '@/lib/speech';
+import { getAllStates, getDistrictsForState, normalizeStateName, normalizeDistrictName, isValidState } from '@/lib/india-locations';
 import { Sparkles, User, GraduationCap, Briefcase, MapPin, CheckCircle2, ArrowRight, Mic, MicOff, Phone, Mail, ShieldCheck, Plus, X, RefreshCw } from 'lucide-react';
 
 interface FormProps {
@@ -28,6 +29,7 @@ const COMMON_SKILL_SUGGESTIONS = [
 
 export default function BeneficiaryOnboarding({ initialProfile, onSubmitProfile }: FormProps) {
   const { registerBeneficiary, isSyncing } = useAuth();
+  const allStates = useMemo(() => getAllStates(), []);
 
   const [formData, setFormData] = useState<BeneficiaryProfile>({
     name: initialProfile.name || 'Ravi Kumar',
@@ -36,8 +38,8 @@ export default function BeneficiaryOnboarding({ initialProfile, onSubmitProfile 
     category: initialProfile.category || 'Scheduled Caste (SC)',
     age: initialProfile.age || 26,
     gender: initialProfile.gender || 'Male',
-    state: initialProfile.state || 'Andhra Pradesh',
-    district: initialProfile.district || 'Vizianagaram',
+    state: initialProfile.state || 'Tamil Nadu',
+    district: initialProfile.district || 'Theni',
     areaType: initialProfile.areaType || 'Rural',
     education: initialProfile.education || '10th Pass',
     currentOccupation: initialProfile.currentOccupation || 'Local Stitching Worker',
@@ -48,6 +50,10 @@ export default function BeneficiaryOnboarding({ initialProfile, onSubmitProfile 
     interests: initialProfile.interests && initialProfile.interests.length > 0 ? initialProfile.interests : ['Garment Design', 'Boutique Setup'],
     careerGoal: initialProfile.careerGoal || 'Establish a home-based garment stitching unit with PM-AJAY GIA toolkit grant.'
   });
+
+  const currentDistricts = useMemo(() => {
+    return getDistrictsForState(formData.state);
+  }, [formData.state]);
 
   const [skillsList, setSkillsList] = useState<string[]>(
     initialProfile.existingSkills && initialProfile.existingSkills.length > 0
@@ -90,7 +96,7 @@ export default function BeneficiaryOnboarding({ initialProfile, onSubmitProfile 
     };
   }, []);
 
-  const handleVoiceInputForField = (field: 'name' | 'skills' | 'goal' | 'occupation') => {
+  const handleVoiceInputForField = (field: 'name' | 'state' | 'district' | 'skills' | 'goal' | 'occupation') => {
     if (activeVoiceField === field) {
       stopSpeechRecognition();
       setActiveVoiceField(null);
@@ -109,6 +115,17 @@ export default function BeneficiaryOnboarding({ initialProfile, onSubmitProfile 
       (transcript) => {
         if (field === 'name') {
           setFormData((prev) => ({ ...prev, name: transcript }));
+        } else if (field === 'state') {
+          const norm = normalizeStateName(transcript);
+          if (norm && isValidState(norm)) {
+            const dists = getDistrictsForState(norm);
+            setFormData((prev) => ({ ...prev, state: norm, district: dists[0] || prev.district }));
+          }
+        } else if (field === 'district') {
+          const normD = normalizeDistrictName(transcript, formData.state);
+          if (normD) {
+            setFormData((prev) => ({ ...prev, district: normD }));
+          }
         } else if (field === 'goal') {
           setFormData((prev) => ({ ...prev, careerGoal: transcript }));
         } else if (field === 'occupation') {
@@ -285,29 +302,64 @@ export default function BeneficiaryOnboarding({ initialProfile, onSubmitProfile 
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                State
+              <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                <span>State *</span>
+                <button
+                  type="button"
+                  onClick={() => handleVoiceInputForField('state')}
+                  className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg border ${
+                    activeVoiceField === 'state' ? 'bg-rose-500 text-white border-rose-400 animate-pulse' : 'bg-slate-800 text-emerald-300 border-slate-700'
+                  }`}
+                >
+                  <Mic size={12} /> {activeVoiceField === 'state' ? 'Listening...' : 'Speak'}
+                </button>
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.state}
-                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-500"
+                onChange={(e) => {
+                  const newState = e.target.value;
+                  const newDists = getDistrictsForState(newState);
+                  setFormData({
+                    ...formData,
+                    state: newState,
+                    district: newDists[0] || ''
+                  });
+                }}
+                className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-500 font-semibold"
                 required
-              />
+              >
+                {allStates.map((st) => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                District
+              <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                <span>District *</span>
+                <button
+                  type="button"
+                  onClick={() => handleVoiceInputForField('district')}
+                  className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg border ${
+                    activeVoiceField === 'district' ? 'bg-rose-500 text-white border-rose-400 animate-pulse' : 'bg-slate-800 text-emerald-300 border-slate-700'
+                  }`}
+                >
+                  <Mic size={12} /> {activeVoiceField === 'district' ? 'Listening...' : 'Speak'}
+                </button>
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.district}
                 onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-500"
+                className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-500 font-semibold"
                 required
-              />
+              >
+                {currentDistricts.map((dst) => (
+                  <option key={dst} value={dst}>{dst}</option>
+                ))}
+                {!currentDistricts.includes(formData.district) && formData.district && (
+                  <option value={formData.district}>{formData.district}</option>
+                )}
+              </select>
             </div>
           </div>
         </div>

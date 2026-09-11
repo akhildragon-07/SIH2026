@@ -7,7 +7,8 @@ import {
   ExplainableMatchScore,
   EducationLevel
 } from './types';
-import { DISTRICT_CENTROIDS, OPPORTUNITIES_DATASET } from './opportunity-data';
+import { OPPORTUNITIES_DATASET } from './opportunity-data';
+import { getDistrictCentroid, normalizeStateName, normalizeDistrictName } from './india-locations';
 
 /**
  * Calculates great-circle distance between two points using the Haversine formula.
@@ -34,18 +35,26 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
 /**
  * Education level rank hierarchy for eligibility comparison
  */
-const EDUCATION_RANK: Record<EducationLevel, number> = {
+const EDUCATION_RANK: Record<string, number> = {
   'Below 8th': 1,
+  '8th': 2,
   '8th Pass': 2,
+  '10th': 3,
   '10th Pass': 3,
+  '12th': 4,
   '12th Pass': 4,
+  'ITI': 5,
+  'Diploma': 5,
   'ITI / Diploma': 5,
-  'Graduate & Above': 6
+  'Graduate': 6,
+  'Graduate & Above': 6,
+  'Post Graduate': 7
 };
 
 function parseEducationRank(eduStr?: string): number {
   if (!eduStr) return 1;
   const lower = eduStr.toLowerCase();
+  if (lower.includes('post') || lower.includes('master')) return 7;
   if (lower.includes('grad') || lower.includes('degree')) return 6;
   if (lower.includes('iti') || lower.includes('diploma')) return 5;
   if (lower.includes('12')) return 4;
@@ -55,54 +64,47 @@ function parseEducationRank(eduStr?: string): number {
 }
 
 /**
- * Get coordinates for a beneficiary from profile or district lookup
+ * Get coordinates for a beneficiary from profile or district centroid lookup
  */
 export function getBeneficiaryCoordinates(profile: BeneficiaryProfile): { latitude: number; longitude: number } {
-  const districtKey = profile.district?.trim();
-  if (districtKey && DISTRICT_CENTROIDS[districtKey]) {
+  const normState = normalizeStateName(profile.state || '');
+  const normDist = normalizeDistrictName(profile.district || '');
+
+  const centroid = getDistrictCentroid(normState, normDist);
+  if (centroid) {
     return {
-      latitude: DISTRICT_CENTROIDS[districtKey].latitude,
-      longitude: DISTRICT_CENTROIDS[districtKey].longitude
+      latitude: centroid.lat,
+      longitude: centroid.lng
     };
   }
 
-  // Search case-insensitive
-  const foundKey = Object.keys(DISTRICT_CENTROIDS).find(
-    (k) => k.toLowerCase() === (profile.district || '').toLowerCase().trim()
-  );
-  if (foundKey) {
-    return {
-      latitude: DISTRICT_CENTROIDS[foundKey].latitude,
-      longitude: DISTRICT_CENTROIDS[foundKey].longitude
-    };
-  }
-
-  // Default fallback: Theni, Tamil Nadu
+  // Fallback default: Theni, Tamil Nadu
   return { latitude: 10.0104, longitude: 77.4768 };
 }
 
 /**
- * 5-Factor Opportunity Scoring & Explainable AI Generator
+ * 6-Factor Opportunity Scoring & Explainable AI Generator
  *
- * Opportunity Score =
- *   0.35 × Skill Match
- * + 0.25 × Location Score
- * + 0.15 × Goal Match
- * + 0.15 × Eligibility Match
- * + 0.10 × NSQF Match
+ * Weighting:
+ * - 40% Job & Skill Match
+ * - 20% Education & NSQF Eligibility
+ * - 15% Experience Alignment
+ * - 10% Interest Alignment
+ * - 10% District Match
+ * - 5% Haversine Distance Proximity
  */
 export function calculateOpportunityScore(
   profile: BeneficiaryProfile,
   opportunity: Opportunity,
   distanceKm: number,
   nsqfRecommendations: NSQFCourse[] = []
-): { score: number; explainable: ExplainableMatchScore } {
+): { score: number; explainable: ExplainableMatchScore; isDistrictMatch: boolean } {
   const reasons: string[] = [];
 
-  // 1. Skill Match (35%)
-  const userSkills = (profile.existingSkills || []).map((s) => s.toLowerCase().trim());
-  const userInterests = (profile.interests || []).map((i) => i.toLowerCase().trim());
-  const oppSkills = (opportunity.skills || []).map((s) => s.toLowerCase().trim());
+  // 1. Skill Match (40%)
+  const userSkills = (profile.existingSkills || []).map((s) => s.toLowerCase().trim()).filter(Boolean);
+  const oppSkills = (opportunity.skills || []).map((s) => s.toLowerCase().trim()).filter(Boolean);
+  const oppRoleText = `${opportunity.jobRole || ''} ${opportunity.name || ''} ${opportunity.sector || ''} ${opportunity.description || ''}`.toLowerCase();
 
   let matchedSkills: string[] = [];
   userSkills.forEach((uSkill) => {
@@ -111,129 +113,151 @@ export function calculateOpportunityScore(
         if (!matchedSkills.includes(oSkill)) matchedSkills.push(oSkill);
       }
     });
+    if (oppRoleText.includes(uSkill) && !matchedSkills.includes(uSkill)) {
+      matchedSkills.push(uSkill);
+    }
   });
 
-  // Also check interests
-  userInterests.forEach((uInt) => {
-    oppSkills.forEach((oSkill) => {
-      if (uInt.includes(oSkill) || oSkill.includes(uInt)) {
-        if (!matchedSkills.includes(oSkill)) matchedSkills.push(oSkill);
-      }
-    });
-  });
-
-  let skillMatchPct = 30; // base score
+  let skillMatchPct = 35;
   if (matchedSkills.length >= 3) skillMatchPct = 98;
-  else if (matchedSkills.length === 2) skillMatchPct = 92;
-  else if (matchedSkills.length === 1) skillMatchPct = 85;
+  else if (matchedSkills.length === 2) skillMatchPct = 90;
+  else if (matchedSkills.length === 1) skillMatchPct = 80;
   else {
-    // Partial textual search
-    const textCorpus = `${opportunity.name} ${opportunity.description} ${opportunity.courseName}`.toLowerCase();
-    const hasAny = userSkills.some((s) => textCorpus.includes(s));
-    if (hasAny) skillMatchPct = 78;
+    // Check broad sector/role match
+    const anyPartial = userSkills.some((s) => oppRoleText.includes(s));
+    if (anyPartial) skillMatchPct = 70;
   }
 
   if (matchedSkills.length > 0) {
     const capitalized = matchedSkills.slice(0, 2).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
-    reasons.push(`✓ Matches your ${capitalized} skill (${skillMatchPct}% alignment)`);
+    reasons.push(`✓ Matches your skills in ${capitalized} (${skillMatchPct}% alignment)`);
   } else {
-    reasons.push(`✓ Provides foundational training to build upon your background`);
+    reasons.push(`✓ Provides foundational training and skill building for this role`);
   }
 
-  // 2. Location Proximity Score (25%)
-  let locationScorePct = 30;
-  if (distanceKm <= 5) locationScorePct = 100;
-  else if (distanceKm <= 10) locationScorePct = 90;
-  else if (distanceKm <= 25) locationScorePct = 75;
-  else if (distanceKm <= 50) locationScorePct = 55;
-  else locationScorePct = 25;
-
-  if (opportunity.district.toLowerCase() === profile.district.toLowerCase()) {
-    locationScorePct = Math.min(100, locationScorePct + 10);
-  }
-
-  reasons.push(`✓ Within ${distanceKm} km in ${opportunity.city}, ${opportunity.district}`);
-
-  // 3. Career Goal Match (15%)
-  const userPref = (profile.preferredLivelihood || '').toLowerCase();
-  const userGoalText = (profile.careerGoal || '').toLowerCase();
-  const oppGoal = opportunity.careerGoal;
-
-  let goalMatchPct = 60;
-  if (
-    (userPref.includes('self') || userGoalText.includes('self') || userGoalText.includes('boutique') || userGoalText.includes('unit')) &&
-    (oppGoal === 'self-employment' || oppGoal === 'entrepreneurship' || opportunity.type === 'livelihood')
-  ) {
-    goalMatchPct = 100;
-    reasons.push(`✓ Highly aligned with your self-employment and micro-enterprise goal`);
-  } else if (
-    (userPref.includes('job') || userGoalText.includes('job') || userGoalText.includes('wage')) &&
-    (oppGoal === 'job' || opportunity.type === 'job' || opportunity.type === 'apprenticeship')
-  ) {
-    goalMatchPct = 100;
-    reasons.push(`✓ Direct match for your wage employment career objective`);
-  } else if (opportunity.type === 'training') {
-    goalMatchPct = 92;
-    reasons.push(`✓ Certified preparatory pathway to achieve your target livelihood`);
-  } else {
-    goalMatchPct = 75;
-    reasons.push(`✓ Compatible with your skill development trajectory`);
-  }
-
-  // 4. Education & Eligibility Match (15%)
+  // 2. Education & NSQF Eligibility (20%)
   const userEduRank = EDUCATION_RANK[profile.education] || parseEducationRank(profile.education);
-  const oppEduRank = parseEducationRank(opportunity.educationRequired);
+  const oppEduRank = parseEducationRank(opportunity.educationRequired || opportunity.min_education);
 
   let eligibilityMatchPct = 80;
   if (userEduRank >= oppEduRank) {
     eligibilityMatchPct = 98;
-    reasons.push(`✓ Meets education criteria (${profile.education || 'Eligible'})`);
+    reasons.push(`✓ Meets minimum education criteria (${profile.education || 'Eligible'})`);
   } else {
     eligibilityMatchPct = 65;
-    reasons.push(`✓ Special bridge admission available for PM-AJAY candidates`);
+    reasons.push(`✓ Special bridge admission / RPL pathway available under PM-AJAY`);
   }
 
-  // 5. NSQF Course Match (10%)
-  let nsqfMatchPct = 60;
-  const oppCourseLower = (opportunity.courseName || '').toLowerCase();
+  const oppNsqf = opportunity.nsqfLevel || opportunity.nsqf_level || 3;
+  let nsqfMatchPct = 85;
   const matchedCourse = nsqfRecommendations.find((rc) => {
     const rcTitle = rc.title.toLowerCase();
     const rcQp = rc.qpCode.toLowerCase();
-    return oppCourseLower.includes(rcTitle) || oppCourseLower.includes(rcQp) || rcTitle.includes(opportunity.name.toLowerCase());
+    return oppRoleText.includes(rcTitle) || oppRoleText.includes(rcQp);
   });
-
   if (matchedCourse) {
     nsqfMatchPct = 96;
-    reasons.push(`✓ Linked to recommended NSQF qualification (${matchedCourse.qpCode || matchedCourse.title})`);
-  } else if (opportunity.nsqfLevel) {
-    nsqfMatchPct = 85;
-    reasons.push(`✓ Certified NSQF Level ${opportunity.nsqfLevel} accredited curriculum`);
+    reasons.push(`✓ Aligned with recommended NSQF qualification (${matchedCourse.qpCode || matchedCourse.title})`);
   } else {
-    nsqfMatchPct = 70;
-    reasons.push(`✓ Recognized skill development and livelihood support program`);
+    reasons.push(`✓ NSQF Level ${oppNsqf} certified skill pathway`);
   }
+
+  const eduAndNsqfScore = 0.6 * eligibilityMatchPct + 0.4 * nsqfMatchPct;
+
+  // 3. Experience Alignment (15%)
+  const userExp = profile.workExperienceYears || 0;
+  let expScorePct = 70;
+  if (oppNsqf <= 3) {
+    expScorePct = userExp >= 0 ? 95 : 80;
+  } else if (oppNsqf === 4) {
+    expScorePct = userExp >= 1 ? 95 : 80;
+  } else {
+    expScorePct = userExp >= 2 ? 95 : 75;
+  }
+  reasons.push(`✓ Experience level suited (${userExp} year${userExp === 1 ? '' : 's'})`);
+
+  // 4. Interest Alignment (10%)
+  const userInterests = [
+    ...(profile.interests || []),
+    ...(profile.interest ? [profile.interest] : []),
+    ...(profile.careerGoal ? [profile.careerGoal] : [])
+  ].map((i) => i.toLowerCase().trim()).filter(Boolean);
+
+  let interestMatchPct = 60;
+  const oppSector = (opportunity.sector || '').toLowerCase();
+  const hasInterestMatch = userInterests.some((int) => 
+    oppRoleText.includes(int) || oppSector.includes(int) || (int.includes('auto') && oppSector.includes('auto')) ||
+    (int.includes('elect') && oppSector.includes('power')) || (int.includes('tailor') && oppSector.includes('apparel')) ||
+    (int.includes('food') && oppSector.includes('food'))
+  );
+
+  if (hasInterestMatch) {
+    interestMatchPct = 95;
+    reasons.push(`✓ Matches your interest in ${opportunity.sector || 'this domain'}`);
+  } else {
+    interestMatchPct = 70;
+  }
+
+  // 5. District Match (10%)
+  const userStateNorm = normalizeStateName(profile.state || '');
+  const userDistNorm = normalizeDistrictName(profile.district || '');
+  const oppStateNorm = normalizeStateName(opportunity.state || '');
+  const oppDistNorm = normalizeDistrictName(opportunity.district || '');
+
+  const isExactDistrict = Boolean(userDistNorm && oppDistNorm && userDistNorm.toLowerCase() === oppDistNorm.toLowerCase());
+  const isExactState = Boolean(userStateNorm && oppStateNorm && userStateNorm.toLowerCase() === oppStateNorm.toLowerCase());
+
+  let districtMatchPct = 10;
+  if (isExactDistrict) {
+    districtMatchPct = 100;
+    reasons.push(`✓ Located right in your home district (${opportunity.district})`);
+  } else if (isExactState) {
+    districtMatchPct = 50;
+    reasons.push(`✓ Located in your state (${opportunity.state})`);
+  } else {
+    districtMatchPct = 20;
+  }
+
+  // 6. Haversine Distance Proximity (5%)
+  let distanceScorePct = 10;
+  if (distanceKm <= 10) distanceScorePct = 100;
+  else if (distanceKm <= 25) distanceScorePct = 80;
+  else if (distanceKm <= 50) distanceScorePct = 60;
+  else if (distanceKm <= 100) distanceScorePct = 30;
+  else distanceScorePct = 10;
+
+  reasons.push(`✓ Distance: ~${distanceKm} km from ${profile.district || 'district center'}`);
 
   // Calculate Weighted Total Score
   const rawScore =
-    0.35 * skillMatchPct +
-    0.25 * locationScorePct +
-    0.15 * goalMatchPct +
-    0.15 * eligibilityMatchPct +
-    0.10 * nsqfMatchPct;
+    0.40 * skillMatchPct +
+    0.20 * eduAndNsqfScore +
+    0.15 * expScorePct +
+    0.10 * interestMatchPct +
+    0.10 * districtMatchPct +
+    0.05 * distanceScorePct;
 
   const finalScore = Math.min(99, Math.max(50, Math.round(rawScore)));
+
+  // Goal match percentage for explainability
+  const goalMatchPct = Math.round(
+    (opportunity.careerGoal === 'job' && (profile.preferredLivelihood === 'Job' || (profile.careerGoal || '').toLowerCase().includes('job'))) ||
+    (opportunity.careerGoal !== 'job' && profile.preferredLivelihood !== 'Job')
+      ? 95
+      : 75
+  );
 
   const explainable: ExplainableMatchScore = {
     overallScore: finalScore,
     skillMatchPct: Math.round(skillMatchPct),
-    locationScorePct: Math.round(locationScorePct),
-    goalMatchPct: Math.round(goalMatchPct),
+    locationScorePct: Math.round(0.67 * districtMatchPct + 0.33 * distanceScorePct),
+    goalMatchPct,
     eligibilityMatchPct: Math.round(eligibilityMatchPct),
     nsqfMatchPct: Math.round(nsqfMatchPct),
     reasons
   };
 
-  return { score: finalScore, explainable };
+  return { score: finalScore, explainable, isDistrictMatch: isExactDistrict };
 }
 
 /**
@@ -254,7 +278,7 @@ export function matchOpportunities(
       opp.longitude
     );
 
-    const { score, explainable } = calculateOpportunityScore(
+    const { score, explainable, isDistrictMatch } = calculateOpportunityScore(
       profile,
       opp,
       dist,
@@ -266,11 +290,12 @@ export function matchOpportunities(
       calculatedDistanceKm: dist,
       matchScore: score,
       explainableScore: explainable,
-      isWithinRadius: dist <= 50
+      isWithinRadius: dist <= 50,
+      isDistrictMatch
     };
   });
 
-  // Sort by Match Score descending, then distance ascending
+  // Sort by Match Score descending, then by distance ascending
   return scoredList.sort((a, b) => {
     if (b.matchScore !== a.matchScore) {
       return b.matchScore - a.matchScore;
@@ -287,24 +312,76 @@ export function filterOpportunities(
   filters: OpportunityFilterState
 ): OpportunityMatchResult[] {
   return opportunities.filter((opp) => {
-    // 1. Distance Radius filter
-    if (filters.radiusKm > 0 && opp.calculatedDistanceKm > filters.radiusKm) {
+    // 1. "In My District" / onlyMyDistrict filter
+    if (filters.onlyMyDistrict && !opp.isDistrictMatch) {
       return false;
     }
 
-    // 2. Type filter
-    if (filters.type !== 'all') {
-      if (filters.type === 'self-employment' || filters.type === 'enterprise') {
+    // 2. State filter
+    if (filters.state && filters.state !== 'all') {
+      const targetState = normalizeStateName(filters.state);
+      const oppState = normalizeStateName(opp.state);
+      if (targetState !== oppState) return false;
+    }
+
+    // 3. District filter
+    if (filters.district && filters.district !== 'all') {
+      const targetDistrict = normalizeDistrictName(filters.district);
+      const oppDistrict = normalizeDistrictName(opp.district);
+      if (targetDistrict !== oppDistrict) return false;
+    }
+
+    // 4. Sector filter
+    if (filters.sector && filters.sector !== 'all') {
+      const targetSector = filters.sector.toLowerCase();
+      const oppSector = (opp.sector || '').toLowerCase();
+      if (!oppSector.includes(targetSector)) return false;
+    }
+
+    // 5. Job Role filter
+    if (filters.jobRole && filters.jobRole !== 'all') {
+      const targetRole = filters.jobRole.toLowerCase();
+      const oppRole = (opp.jobRole || opp.name || '').toLowerCase();
+      if (!oppRole.includes(targetRole)) return false;
+    }
+
+    // 6. NSQF Level filter
+    if (filters.nsqfLevel && filters.nsqfLevel !== 'all') {
+      const oppNsqf = opp.nsqfLevel || opp.nsqf_level;
+      if (oppNsqf !== Number(filters.nsqfLevel)) return false;
+    }
+
+    // 7. Distance Radius filter (0 = all / no radius limit)
+    if (filters.radiusKm && filters.radiusKm > 0 && opp.calculatedDistanceKm > filters.radiusKm) {
+      return false;
+    }
+
+    // 8. Salary Range filter
+    const minSal = filters.salaryMin || filters.minSalary;
+    const maxSal = filters.salaryMax || filters.maxSalary;
+    if (minSal && minSal > 0) {
+      const oppSalary = opp.estimatedMonthlyIncome || (opp.salary_min && opp.salary_max ? Math.round((opp.salary_min + opp.salary_max) / 2) : (opp.salary_min || opp.salary_max || 0));
+      if (oppSalary < minSal) return false;
+    }
+    if (maxSal && maxSal > 0) {
+      const oppSalary = opp.estimatedMonthlyIncome || (opp.salary_min && opp.salary_max ? Math.round((opp.salary_min + opp.salary_max) / 2) : (opp.salary_min || opp.salary_max || 0));
+      if (oppSalary > maxSal) return false;
+    }
+
+    // 9. Type filter
+    if (filters.type && filters.type !== 'all') {
+      const targetType = filters.type.toLowerCase();
+      if (targetType === 'self-employment' || targetType === 'enterprise' || targetType === 'livelihood') {
         if (opp.type !== 'livelihood' && opp.careerGoal !== 'self-employment' && opp.careerGoal !== 'entrepreneurship') {
           return false;
         }
-      } else if (opp.type !== filters.type) {
+      } else if (opp.type !== targetType && (opp.livelihood_type || '').toLowerCase() !== targetType) {
         return false;
       }
     }
 
-    // 3. Skill filter
-    if (filters.skill !== 'all') {
+    // 10. Skill filter
+    if (filters.skill && filters.skill !== 'all') {
       const targetSkill = filters.skill.toLowerCase();
       const hasSkill = opp.skills.some((s) => s.toLowerCase().includes(targetSkill));
       const hasName = opp.name.toLowerCase().includes(targetSkill);
@@ -314,8 +391,8 @@ export function filterOpportunities(
       }
     }
 
-    // 4. Career Goal filter
-    if (filters.careerGoal !== 'all') {
+    // 11. Career Goal filter
+    if (filters.careerGoal && filters.careerGoal !== 'all') {
       if (filters.careerGoal === 'job') {
         if (opp.careerGoal !== 'job' && opp.type !== 'job' && opp.type !== 'apprenticeship') {
           return false;
@@ -331,10 +408,10 @@ export function filterOpportunities(
       }
     }
 
-    // 5. Search query text
-    if (filters.searchQuery.trim() !== '') {
+    // 12. Search query text
+    if (filters.searchQuery && filters.searchQuery.trim() !== '') {
       const q = filters.searchQuery.toLowerCase().trim();
-      const searchable = `${opp.name} ${opp.skills.join(' ')} ${opp.courseName || ''} ${opp.provider || ''} ${opp.district} ${opp.city} ${opp.state} ${opp.description || ''}`.toLowerCase();
+      const searchable = `${opp.name} ${opp.skills.join(' ')} ${opp.courseName || ''} ${opp.provider || ''} ${opp.district} ${opp.city} ${opp.state} ${opp.sector || ''} ${opp.description || ''}`.toLowerCase();
       if (!searchable.includes(q)) {
         return false;
       }
@@ -345,7 +422,7 @@ export function filterOpportunities(
 }
 
 /**
- * Get district-wise summary statistics for Admin dashboard
+ * Get district-wise summary statistics for Admin dashboard and Analytics
  */
 export function getDistrictOpportunityStats(): Record<string, {
   district: string;
@@ -361,7 +438,7 @@ export function getDistrictOpportunityStats(): Record<string, {
   const statsMap: Record<string, any> = {};
 
   OPPORTUNITIES_DATASET.forEach((opp) => {
-    const key = opp.district;
+    const key = `${opp.state}:${opp.district}`;
     if (!statsMap[key]) {
       statsMap[key] = {
         district: opp.district,
@@ -391,12 +468,17 @@ export function getDistrictOpportunityStats(): Record<string, {
   Object.keys(statsMap).forEach((d) => {
     const item = statsMap[d];
     const sortedSkills = Object.entries(item.skillsCount)
-      .sort((a: any, b: any) => b[1] - a[1])
+      .sort((a: any, b: any) => (b[1] as number) - (a[1] as number))
       .slice(0, 4)
       .map(([sk]) => sk);
 
-    item.topSkills = sortedSkills.length > 0 ? sortedSkills : ['Tailoring', 'Agriculture', 'Electrical', 'Food Processing'];
+    item.topSkills = sortedSkills.length > 0 ? sortedSkills : ['Automotive', 'Agriculture', 'Electrical', 'Tailoring'];
     item.density = item.total >= 5 ? 'High' : item.total >= 3 ? 'Medium' : 'Low';
+
+    // Also populate plain district key if not already set
+    if (!statsMap[item.district]) {
+      statsMap[item.district] = item;
+    }
   });
 
   return statsMap;

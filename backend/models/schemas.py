@@ -5,10 +5,13 @@ class BeneficiaryProfileRequest(BaseModel):
     name: Optional[str] = "Ravi"
     education: str = "10th"
     age: Optional[int] = 24
-    location: Optional[str] = "Andhra Pradesh"
+    state: Optional[str] = "Tamil Nadu"
+    district: Optional[str] = "Theni"
+    location: Optional[str] = "Tamil Nadu, Theni"
     occupation: Optional[str] = "Unemployed"
     experience_years: float = 0.0
     skills: List[str] = Field(default_factory=list)
+    interest: Optional[str] = None
     interests: List[str] = Field(default_factory=list)
     career_goal: str = "self-employment"
     preferred_livelihood: Optional[str] = "Self-employment"

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import AdminApprovalSection from './AdminApprovalSection';
 import AnimatedCounter from './ui/AnimatedCounter';
+import { getAllStates, getDistrictsForState } from '@/lib/india-locations';
 
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -46,11 +47,31 @@ export default function AdminDashboard() {
 
   const [data, setData] = useState<AdminAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedState, setSelectedState] = useState('All');
   const [selectedDistrict, setSelectedDistrict] = useState('All');
   const [selectedEducation, setSelectedEducation] = useState('All');
   const [selectedHeatmapDistrict, setSelectedHeatmapDistrict] = useState<string>('Theni');
 
+  const allStates = React.useMemo(() => getAllStates(), []);
+  const availableDistrictsForFilter = React.useMemo(() => {
+    if (selectedState === 'All') return [];
+    return getDistrictsForState(selectedState);
+  }, [selectedState]);
+
   const districtStatsMap = getDistrictOpportunityStats();
+  const uniqueDistrictStats = React.useMemo(() => {
+    const seen = new Set<string>();
+    const list: any[] = [];
+    Object.values(districtStatsMap).forEach((stat: any) => {
+      const key = `${stat.state}:${stat.district}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push(stat);
+      }
+    });
+    return list;
+  }, [districtStatsMap]);
+
   const currentDistrictMetrics = districtStatsMap[selectedHeatmapDistrict] || {
     district: selectedHeatmapDistrict,
     state: 'Tamil Nadu',
@@ -581,13 +602,17 @@ export default function AdminDashboard() {
               <option value="Vijayawada">Vijayawada (Andhra Pradesh)</option>
               <option value="Guntur">Guntur (Andhra Pradesh)</option>
               <option value="Tirupati">Tirupati (Andhra Pradesh)</option>
+              <option value="Bengaluru Urban">Bengaluru Urban (Karnataka)</option>
               <option value="Bengaluru">Bengaluru (Karnataka)</option>
               <option value="Mysuru">Mysuru (Karnataka)</option>
+              <option value="Pune">Pune (Maharashtra)</option>
+              <option value="Solapur">Solapur (Maharashtra)</option>
               <option value="Kochi">Kochi (Kerala)</option>
               <option value="Thiruvananthapuram">Thiruvananthapuram (Kerala)</option>
               <option value="Sitapur">Sitapur (Uttar Pradesh)</option>
               <option value="Gaya">Gaya (Bihar)</option>
-              <option value="Solapur">Solapur (Maharashtra)</option>
+              <option value="Patna">Patna (Bihar)</option>
+              <option value="Jaipur">Jaipur (Rajasthan)</option>
             </select>
           </div>
         </div>

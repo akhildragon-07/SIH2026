@@ -87,9 +87,9 @@ export default function OpportunityCard({
             : 'border-slate-800 bg-slate-900/80 hover:border-slate-700 hover:bg-slate-900'
         }`}
       >
-        {/* Top Header: Badge, Match Score & Distance */}
-        <div className="flex flex-wrap items-start justify-between gap-2.5">
-          <div className="flex items-center gap-2">
+        {/* Top Header: Badges, Match Score & Distance */}
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${badgeInfo.color}`}
             >
@@ -97,6 +97,19 @@ export default function OpportunityCard({
               <TypeIcon size={12} />
               <span>{badgeInfo.label}</span>
             </span>
+
+            {opportunity.isDistrictMatch && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                <MapPin size={11} className="text-emerald-400" />
+                <span>In Your District</span>
+              </span>
+            )}
+
+            {opportunity.sector && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-cyan-300 border border-slate-700">
+                {opportunity.sector}
+              </span>
+            )}
 
             {opportunity.nsqfLevel && (
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
@@ -113,23 +126,29 @@ export default function OpportunityCard({
 
             <div className="flex items-center gap-1 text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
               <MapPin size={12} />
-              <span>{opportunity.calculatedDistanceKm} km away</span>
+              <span>{opportunity.calculatedDistanceKm} km</span>
             </div>
           </div>
         </div>
 
-        {/* Opportunity Title & Provider */}
+        {/* Opportunity Title, Job Role & Provider */}
         <div>
           <h3 className="text-lg font-bold font-serif text-slate-100 group-hover:text-emerald-300 transition-colors leading-snug">
             {opportunity.name}
           </h3>
+          {opportunity.jobRole && opportunity.jobRole !== opportunity.name && (
+            <p className="text-xs font-semibold text-emerald-400/90 mt-0.5">
+              Role: {opportunity.jobRole}
+            </p>
+          )}
           <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-1 font-medium">
             <Building size={13} className="text-slate-500 shrink-0" />
-            <span className="truncate">{opportunity.provider || 'District Livelihood Mission'}</span>
+            <span className="truncate">{opportunity.provider || 'PM-AJAY Partner Organization'}</span>
           </p>
           <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
             <MapPin size={13} className="text-slate-500 shrink-0" />
-            <span>{opportunity.city}, {opportunity.district}, {opportunity.state}</span>
+            <span>{opportunity.city ? `${opportunity.city}, ` : ''}{opportunity.district}, {opportunity.state}</span>
+            <span className="text-[10px] text-slate-500 italic ml-1">(Approximate district location)</span>
           </p>
         </div>
 
@@ -207,24 +226,24 @@ export default function OpportunityCard({
               {/* Multi-Factor Score Bars */}
               <div className="mt-3 pt-2 border-t border-slate-800/80 space-y-1.5 text-[10px] font-mono">
                 <div className="flex justify-between text-slate-400">
-                  <span>Skill Match (35%):</span>
+                  <span>Job & Skill Match (40%):</span>
                   <span className="text-emerald-400 font-bold">{opportunity.explainableScore.skillMatchPct}%</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>Location Proximity (25%):</span>
-                  <span className="text-amber-400 font-bold">{opportunity.explainableScore.locationScorePct}%</span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Career Goal Match (15%):</span>
-                  <span className="text-teal-400 font-bold">{opportunity.explainableScore.goalMatchPct}%</span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Education Match (15%):</span>
+                  <span>Education & NSQF (20%):</span>
                   <span className="text-cyan-400 font-bold">{opportunity.explainableScore.eligibilityMatchPct}%</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>NSQF Relevance (10%):</span>
+                  <span>Experience Alignment (15%):</span>
+                  <span className="text-teal-400 font-bold">{opportunity.explainableScore.goalMatchPct}%</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Interest Alignment (10%):</span>
                   <span className="text-purple-400 font-bold">{opportunity.explainableScore.nsqfMatchPct}%</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>District & Distance Proximity (15%):</span>
+                  <span className="text-amber-400 font-bold">{opportunity.explainableScore.locationScorePct}%</span>
                 </div>
               </div>
             </div>
@@ -308,6 +327,18 @@ export default function OpportunityCard({
 
             {/* Core Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-2xl bg-slate-950 p-4 border border-slate-800 text-xs">
+              {opportunity.sector && (
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Sector / Industry</span>
+                  <span className="font-bold text-cyan-300">{opportunity.sector}</span>
+                </div>
+              )}
+              {opportunity.jobRole && (
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Designated Job Role</span>
+                  <span className="font-semibold text-emerald-300">{opportunity.jobRole}</span>
+                </div>
+              )}
               {opportunity.courseName && (
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase font-bold block">NSQF Qualification / Course</span>

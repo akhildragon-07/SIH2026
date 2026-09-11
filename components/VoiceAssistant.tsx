@@ -65,13 +65,14 @@ interface VoiceAssistantProps {
 
 export type StageType =
   | 'name'
-  | 'age'
-  | 'dob'
+  | 'state'
+  | 'district'
   | 'education'
-  | 'skills'
-  | 'experience'
+  | 'age'
   | 'occupation'
-  | 'location'
+  | 'experience'
+  | 'skills'
+  | 'interest'
   | 'livelihood_goal'
   | 'confirm_summary'
   | 'complete';
@@ -85,16 +86,17 @@ interface StepMeta {
 
 const STAGE_METAS: Record<StageType, StepMeta> = {
   name: { step: 1, title: 'Full Name', shortDesc: 'Your Name', fieldLabel: 'Beneficiary Name' },
-  age: { step: 2, title: 'Age', shortDesc: 'Your Age', fieldLabel: 'Age in Years' },
-  dob: { step: 3, title: 'Date of Birth', shortDesc: 'Birth Date', fieldLabel: 'Date of Birth' },
+  state: { step: 2, title: 'State', shortDesc: 'Indian State', fieldLabel: 'State of Residence' },
+  district: { step: 3, title: 'District', shortDesc: 'District', fieldLabel: 'Home District' },
   education: { step: 4, title: 'Highest Qualification', shortDesc: 'Education', fieldLabel: 'Education Level' },
-  skills: { step: 5, title: 'Skills & Trade', shortDesc: 'Known Skills', fieldLabel: 'Vocational Skills' },
-  experience: { step: 6, title: 'Work Experience', shortDesc: 'Years Exp', fieldLabel: 'Years of Experience' },
-  occupation: { step: 7, title: 'Current Occupation', shortDesc: 'Current Work', fieldLabel: 'Current Occupation' },
-  location: { step: 8, title: 'State & District', shortDesc: 'Location', fieldLabel: 'District & State' },
-  livelihood_goal: { step: 9, title: 'Livelihood Goal', shortDesc: 'Job vs Grant', fieldLabel: 'Career Preference' },
-  confirm_summary: { step: 10, title: 'Verbal Verification', shortDesc: 'Confirmation', fieldLabel: 'Summary Verification' },
-  complete: { step: 11, title: 'Account Registered', shortDesc: 'NSQF Mapped', fieldLabel: 'Official Account' }
+  age: { step: 5, title: 'Age', shortDesc: 'Your Age', fieldLabel: 'Age in Years' },
+  occupation: { step: 6, title: 'Current Occupation', shortDesc: 'Current Work', fieldLabel: 'Current Occupation' },
+  experience: { step: 7, title: 'Work Experience', shortDesc: 'Years Exp', fieldLabel: 'Years of Experience' },
+  skills: { step: 8, title: 'Skills & Trade', shortDesc: 'Known Skills', fieldLabel: 'Vocational Skills' },
+  interest: { step: 9, title: 'Industry Interest', shortDesc: 'Interest Domain', fieldLabel: 'Target Sector' },
+  livelihood_goal: { step: 10, title: 'Livelihood Goal', shortDesc: 'Job vs Grant', fieldLabel: 'Career Preference' },
+  confirm_summary: { step: 11, title: 'Verbal Verification', shortDesc: 'Confirmation', fieldLabel: 'Summary Verification' },
+  complete: { step: 12, title: 'Account Registered', shortDesc: 'NSQF Mapped', fieldLabel: 'Official Account' }
 };
 
 const INITIAL_WELCOME: Record<string, { welcome: string; prompts: string[] }> = {
@@ -298,12 +300,14 @@ export default function VoiceAssistant({
       speakAssistantText(welcomePack.welcome, newLang);
     } else {
       try {
+        const newLangConfig = resolveLanguageConfig(newLang);
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: '',
             language: newLang,
+            preferredLanguage: newLangConfig.code,
             currentProfile: convProfile,
             stage: currentStage
           })
@@ -496,6 +500,7 @@ export default function VoiceAssistant({
         body: JSON.stringify({
           message: text,
           language: selectedLanguage,
+          preferredLanguage: activeLangConfig.code,
           currentProfile: mergedProfile,
           stage: currentStage
         })
@@ -561,7 +566,8 @@ export default function VoiceAssistant({
         currentOccupation: targetProf.currentOccupation || 'Self Employed',
         district: targetProf.district || 'Theni',
         state: targetProf.state || 'Tamil Nadu',
-        preferredLivelihood: targetProf.preferredLivelihood || 'Self-employment'
+        preferredLivelihood: targetProf.preferredLivelihood || 'Self-employment',
+        preferredLanguage: activeLangConfig.code
       };
 
       // 1. Register with backend DB with unique name-based user ID & SHA-256 password
@@ -588,17 +594,23 @@ export default function VoiceAssistant({
       // 3. Spoken Recommendations Summary in Native Language
       const spokenRecommendation = generateSpokenRecommendationsSummary(analysis, selectedLanguage);
 
+      const localizedCompletionPrompts: Record<string, string[]> = {
+        'Tamil': ['பயிற்சி விவரங்கள் காட்டு', 'முழு வரைபடத்தை பார்', 'பயனாளி அட்டை'],
+        'Telugu': ['శిక్షణ వివరాలు చూపించు', 'పూర్తి రోడ్‌మ్యాప్ చూడండి', 'లబ్ధిదారుని కార్డు'],
+        'Hindi': ['प्रशिक्षण विवरण देखें', 'पूर्ण रोडमैप देखें', 'लाभार्थी कार्ड'],
+        'Kannada': ['ತರಬೇತಿ ವಿವರಗಳನ್ನು ನೋಡಿ', 'ಸಂಪೂರ್ಣ ರೋಡ್‌ಮ್ಯಾಪ್ ನೋಡಿ'],
+        'Malayalam': ['പരിശീലന വിവരങ്ങൾ കാണുക', 'മുഴുവൻ റോഡ്‌മാപ്പ് കാണുക'],
+        'Marathi': ['प्रशिक्षण तपशील पहा', 'संपूर्ण रोडमॅप पहा'],
+        'English': ['View NSQF Details', 'Explore Full Roadmap', 'View Beneficiary Card']
+      };
+
       const completionMsg: ChatMessage = {
         id: `asst-complete-${Date.now()}`,
         sender: 'assistant',
         text: spokenRecommendation,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         language: selectedLanguage,
-        suggestedPrompts: [
-          selectedLanguage === 'Tamil' ? 'பயிற்சி விவரங்கள் காட்டு' : 'View NSQF Details',
-          'Explore Full Roadmap',
-          'View Beneficiary Card'
-        ]
+        suggestedPrompts: localizedCompletionPrompts[getLangKey(selectedLanguage)] || localizedCompletionPrompts['English']
       };
 
       setMessages((prev) => [...prev, completionMsg]);
@@ -1046,7 +1058,7 @@ export default function VoiceAssistant({
             </div>
           </div>
 
-          {/* Form Fields List (Strictly 1-by-1 Highlighted) */}
+          {/* Form Fields List (Strictly 10 Sequential Steps Highlighted) */}
           <div className="space-y-3">
             {/* Field 1: Full Name */}
             <div
@@ -1081,27 +1093,27 @@ export default function VoiceAssistant({
               </div>
             </div>
 
-            {/* Field 2: Age */}
+            {/* Field 2: State */}
             <div
-              onClick={() => handleJumpToStep('age')}
+              onClick={() => handleJumpToStep('state')}
               className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-                currentStage === 'age'
+                currentStage === 'state'
                   ? 'border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/30 shadow-md'
-                  : convProfile.age
+                  : convProfile.state
                   ? 'border-emerald-500/40 bg-slate-950/70'
                   : 'border-slate-800 bg-slate-950/40 opacity-70 hover:opacity-100'
               }`}
             >
               <div className="flex items-center justify-between mb-0.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Calendar size={13} className="text-emerald-400" />
-                  <span>2. Age</span>
+                  <MapPin size={13} className="text-emerald-400" />
+                  <span>2. State</span>
                 </label>
-                {currentStage === 'age' ? (
+                {currentStage === 'state' ? (
                   <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
                     <span className="size-1.5 rounded-full bg-rose-400" /> Currently Asking
                   </span>
-                ) : convProfile.age ? (
+                ) : convProfile.state ? (
                   <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
                     <CheckCircle2 size={12} /> Captured
                   </span>
@@ -1110,31 +1122,31 @@ export default function VoiceAssistant({
                 )}
               </div>
               <div className="text-sm font-bold text-slate-100">
-                {convProfile.age ? `${convProfile.age} Years Old` : <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>}
+                {convProfile.state || <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>}
               </div>
             </div>
 
-            {/* Field 3: Date of Birth */}
+            {/* Field 3: District */}
             <div
-              onClick={() => handleJumpToStep('dob')}
+              onClick={() => handleJumpToStep('district')}
               className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-                currentStage === 'dob'
+                currentStage === 'district'
                   ? 'border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/30 shadow-md'
-                  : convProfile.dob
+                  : convProfile.district
                   ? 'border-emerald-500/40 bg-slate-950/70'
                   : 'border-slate-800 bg-slate-950/40 opacity-70 hover:opacity-100'
               }`}
             >
               <div className="flex items-center justify-between mb-0.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Calendar size={13} className="text-emerald-400" />
-                  <span>3. Date of Birth (Password)</span>
+                  <MapPin size={13} className="text-emerald-400" />
+                  <span>3. District</span>
                 </label>
-                {currentStage === 'dob' ? (
+                {currentStage === 'district' ? (
                   <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
                     <span className="size-1.5 rounded-full bg-rose-400" /> Currently Asking
                   </span>
-                ) : convProfile.dob ? (
+                ) : convProfile.district ? (
                   <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
                     <CheckCircle2 size={12} /> Captured
                   </span>
@@ -1142,8 +1154,8 @@ export default function VoiceAssistant({
                   <span className="text-[10px] text-slate-500">Waiting for answer...</span>
                 )}
               </div>
-              <div className="text-sm font-bold text-slate-100 font-mono">
-                {convProfile.dob || <span className="text-slate-500 italic text-xs font-sans">Waiting for voice input...</span>}
+              <div className="text-sm font-bold text-slate-100">
+                {convProfile.district ? `${convProfile.district}${convProfile.state ? `, ${convProfile.state}` : ''}` : <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>}
               </div>
             </div>
 
@@ -1180,7 +1192,106 @@ export default function VoiceAssistant({
               </div>
             </div>
 
-            {/* Field 5: Known Skills */}
+            {/* Field 5: Age */}
+            <div
+              onClick={() => handleJumpToStep('age')}
+              className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                currentStage === 'age'
+                  ? 'border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/30 shadow-md'
+                  : convProfile.age
+                  ? 'border-emerald-500/40 bg-slate-950/70'
+                  : 'border-slate-800 bg-slate-950/40 opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Calendar size={13} className="text-emerald-400" />
+                  <span>5. Age</span>
+                </label>
+                {currentStage === 'age' ? (
+                  <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
+                    <span className="size-1.5 rounded-full bg-rose-400" /> Currently Asking
+                  </span>
+                ) : convProfile.age ? (
+                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Captured
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-500">Waiting for answer...</span>
+                )}
+              </div>
+              <div className="text-sm font-bold text-slate-100">
+                {convProfile.age ? `${convProfile.age} Years Old` : <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>}
+              </div>
+            </div>
+
+            {/* Field 6: Current Occupation */}
+            <div
+              onClick={() => handleJumpToStep('occupation')}
+              className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                currentStage === 'occupation'
+                  ? 'border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/30 shadow-md'
+                  : convProfile.currentOccupation
+                  ? 'border-emerald-500/40 bg-slate-950/70'
+                  : 'border-slate-800 bg-slate-950/40 opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Briefcase size={13} className="text-emerald-400" />
+                  <span>6. Current Occupation</span>
+                </label>
+                {currentStage === 'occupation' ? (
+                  <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
+                    <span className="size-1.5 rounded-full bg-rose-400" /> Currently Asking
+                  </span>
+                ) : convProfile.currentOccupation ? (
+                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Captured
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-500">Waiting for answer...</span>
+                )}
+              </div>
+              <div className="text-sm font-bold text-slate-100">
+                {convProfile.currentOccupation || <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>}
+              </div>
+            </div>
+
+            {/* Field 7: Experience */}
+            <div
+              onClick={() => handleJumpToStep('experience')}
+              className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                currentStage === 'experience'
+                  ? 'border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/30 shadow-md'
+                  : convProfile.workExperienceYears !== undefined
+                  ? 'border-emerald-500/40 bg-slate-950/70'
+                  : 'border-slate-800 bg-slate-950/40 opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Briefcase size={13} className="text-emerald-400" />
+                  <span>7. Years of Experience</span>
+                </label>
+                {currentStage === 'experience' ? (
+                  <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
+                    <span className="size-1.5 rounded-full bg-rose-400" /> Currently Asking
+                  </span>
+                ) : convProfile.workExperienceYears !== undefined ? (
+                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Captured
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-500">Waiting for answer...</span>
+                )}
+              </div>
+              <div className="text-sm font-bold text-slate-100">
+                {convProfile.workExperienceYears !== undefined ? `${convProfile.workExperienceYears} Years Experience` : <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>}
+              </div>
+            </div>
+
+            {/* Field 8: Known Skills */}
             <div
               onClick={() => handleJumpToStep('skills')}
               className={`p-3 rounded-2xl border transition-all cursor-pointer ${
@@ -1194,7 +1305,7 @@ export default function VoiceAssistant({
               <div className="flex items-center justify-between mb-0.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Wrench size={13} className="text-emerald-400" />
-                  <span>5. Known Skills & Trade</span>
+                  <span>8. Known Skills & Trade</span>
                 </label>
                 {currentStage === 'skills' ? (
                   <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
@@ -1224,27 +1335,27 @@ export default function VoiceAssistant({
               </div>
             </div>
 
-            {/* Field 6: Experience */}
+            {/* Field 9: Interest */}
             <div
-              onClick={() => handleJumpToStep('experience')}
+              onClick={() => handleJumpToStep('interest')}
               className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-                currentStage === 'experience'
+                currentStage === 'interest'
                   ? 'border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/30 shadow-md'
-                  : convProfile.workExperienceYears !== undefined
+                  : convProfile.interests && convProfile.interests.length > 0
                   ? 'border-emerald-500/40 bg-slate-950/70'
                   : 'border-slate-800 bg-slate-950/40 opacity-70 hover:opacity-100'
               }`}
             >
               <div className="flex items-center justify-between mb-0.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Briefcase size={13} className="text-emerald-400" />
-                  <span>6. Years of Experience</span>
+                  <Sparkles size={13} className="text-emerald-400" />
+                  <span>9. Industry Interest</span>
                 </label>
-                {currentStage === 'experience' ? (
+                {currentStage === 'interest' ? (
                   <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
                     <span className="size-1.5 rounded-full bg-rose-400" /> Currently Asking
                   </span>
-                ) : convProfile.workExperienceYears !== undefined ? (
+                ) : convProfile.interests && convProfile.interests.length > 0 ? (
                   <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
                     <CheckCircle2 size={12} /> Captured
                   </span>
@@ -1252,82 +1363,16 @@ export default function VoiceAssistant({
                   <span className="text-[10px] text-slate-500">Waiting for answer...</span>
                 )}
               </div>
-              <div className="text-sm font-bold text-slate-100">
-                {convProfile.workExperienceYears !== undefined ? `${convProfile.workExperienceYears} Years Experience` : <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>}
-              </div>
-            </div>
-
-            {/* Field 7: Current Occupation */}
-            <div
-              onClick={() => handleJumpToStep('occupation')}
-              className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-                currentStage === 'occupation'
-                  ? 'border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/30 shadow-md'
-                  : convProfile.currentOccupation
-                  ? 'border-emerald-500/40 bg-slate-950/70'
-                  : 'border-slate-800 bg-slate-950/40 opacity-70 hover:opacity-100'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-0.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Briefcase size={13} className="text-emerald-400" />
-                  <span>7. Current Occupation</span>
-                </label>
-                {currentStage === 'occupation' ? (
-                  <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
-                    <span className="size-1.5 rounded-full bg-rose-400" /> Currently Asking
-                  </span>
-                ) : convProfile.currentOccupation ? (
-                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 size={12} /> Captured
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-500">Waiting for answer...</span>
-                )}
-              </div>
-              <div className="text-sm font-bold text-slate-100">
-                {convProfile.currentOccupation || <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>}
-              </div>
-            </div>
-
-            {/* Field 8: Location */}
-            <div
-              onClick={() => handleJumpToStep('location')}
-              className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-                currentStage === 'location'
-                  ? 'border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/30 shadow-md'
-                  : convProfile.district || convProfile.state
-                  ? 'border-emerald-500/40 bg-slate-950/70'
-                  : 'border-slate-800 bg-slate-950/40 opacity-70 hover:opacity-100'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-0.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <MapPin size={13} className="text-emerald-400" />
-                  <span>8. Location (Town / District / State)</span>
-                </label>
-                {currentStage === 'location' ? (
-                  <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
-                    <span className="size-1.5 rounded-full bg-rose-400" /> Currently Asking
-                  </span>
-                ) : convProfile.district || convProfile.state ? (
-                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 size={12} /> Captured
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-500">Waiting for answer...</span>
-                )}
-              </div>
-              <div className="text-sm font-bold text-slate-100">
-                {convProfile.district || convProfile.state ? (
-                  <span>{convProfile.district || 'District'}, {convProfile.state || 'State'}</span>
+              <div className="text-sm font-bold text-emerald-300">
+                {convProfile.interests && convProfile.interests.length > 0 ? (
+                  convProfile.interests.join(', ')
                 ) : (
                   <span className="text-slate-500 italic text-xs">Waiting for voice input...</span>
                 )}
               </div>
             </div>
 
-            {/* Field 9: Livelihood Goal */}
+            {/* Field 10: Livelihood Goal */}
             <div
               onClick={() => handleJumpToStep('livelihood_goal')}
               className={`p-3 rounded-2xl border transition-all cursor-pointer ${
@@ -1341,7 +1386,7 @@ export default function VoiceAssistant({
               <div className="flex items-center justify-between mb-0.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Compass size={13} className="text-emerald-400" />
-                  <span>9. Livelihood Goal</span>
+                  <span>10. Livelihood Goal</span>
                 </label>
                 {currentStage === 'livelihood_goal' ? (
                   <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1 animate-pulse">
@@ -1360,6 +1405,8 @@ export default function VoiceAssistant({
                   <span>
                     {convProfile.preferredLivelihood === 'Self-employment'
                       ? 'Self-employment (100% PM-AJAY Toolkit Grant)'
+                      : convProfile.preferredLivelihood === 'Entrepreneurship'
+                      ? 'Entrepreneurship & Enterprise Setup'
                       : 'Salaried Job in a Company'}
                   </span>
                 ) : (

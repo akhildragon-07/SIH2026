@@ -72,10 +72,13 @@ def recommend_courses(profile: BeneficiaryProfileRequest, top_k: int = 5) -> Lis
     df = DATASET_DF.copy()
 
     user_skills_set = set([s.lower() for s in profile.skills])
-    user_interests_set = set([i.lower() for i in profile.interests])
+    all_interests = list(profile.interests)
+    if profile.interest and profile.interest not in all_interests:
+        all_interests.append(profile.interest)
+    user_interests_set = set([i.lower() for i in all_interests])
     user_goal = profile.career_goal.lower()
 
-    user_profile_text = f"{profile.education} {' '.join(profile.skills)} {profile.experience_years} years {' '.join(profile.interests)} {profile.career_goal}"
+    user_profile_text = f"{profile.education} {' '.join(profile.skills)} {profile.experience_years} years {' '.join(all_interests)} {profile.career_goal} {profile.state or ''} {profile.district or ''}"
 
     course_groups = df.groupby('recommended_qualification').first().reset_index()
 

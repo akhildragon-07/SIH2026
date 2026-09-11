@@ -1,38 +1,38 @@
 [
   {
-    "id": "SC-AJAY-2026-7280",
-    "beneficiaryId": "SC-AJAY-2026-7280",
-    "userId": "akhil",
-    "name": "Akhil",
+    "id": "SC-AJAY-2026-5081",
+    "beneficiaryId": "SC-AJAY-2026-5081",
+    "userId": "ramesh",
+    "name": "Ramesh",
     "phone": "9848022338",
     "email": "demobeneficiary@pmajay.gov.in",
     "category": "Scheduled Caste (SC)",
-    "age": 26,
+    "age": 28,
     "gender": "Female",
-    "state": "Tamil Nadu",
-    "district": "Akhil",
+    "state": "Telangana",
+    "district": "Mysuru",
     "areaType": "Rural",
     "education": "12th Pass",
-    "currentOccupation": "வேலை தேடுகிறேன்",
+    "currentOccupation": "Electric is very he want to need startup or Salary job in",
     "existingSkills": [
-      "Organic Farming"
+      "House Wiring & Electricals"
     ],
-    "workExperienceYears": 2,
+    "workExperienceYears": 28,
     "monthlyIncome": "₹4,500 – ₹7,500",
     "preferredLivelihood": "Job",
     "interests": [
-      "Garment Design",
-      "Boutique Setup",
-      "Uniform Stitching"
+      "IT & Digital Services"
     ],
     "careerGoal": "Secure a salaried job with certified NSQF credentials.",
     "giaEligibilityStatus": "Eligible for 100% GIA Toolkit Grant",
     "isBackendSynced": true,
-    "createdAt": "2026-09-10T21:34:40.870Z",
-    "updatedAt": "2026-09-10T21:34:40.908Z",
+    "createdAt": "2026-09-11T06:37:17.143Z",
+    "updatedAt": "2026-09-11T06:37:17.179Z",
     "profileCompletionPercentage": 100,
-    "dob": "12/06/1997",
-    "passwordHash": "9f909df182fb0516b9c055c0cf585623dddf45728cb34999048a0569c8a6d4ba"
+    "dob": "15/06/1998",
+    "passwordHash": "fd28613d6370c43bffa42195381ff06672c6db1c8fb77043a4aaf3c09ccfb337",
+    "preferredLanguage": "en-IN",
+    "interest": "IT & Digital Services"
   },
   {
     "id": "SC-AJAY-2026-1002",

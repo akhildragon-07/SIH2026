@@ -4,39 +4,44 @@ import React, { useState } from 'react';
 import { BeneficiaryProfile } from '@/lib/types';
 import { Bot, Send, Sparkles, User, ArrowRight } from 'lucide-react';
 
+import { normalizeStateName, normalizeDistrictName, isValidState, isValidDistrictForState, getDistrictsForState } from '@/lib/india-locations';
+
 interface TextBotProps {
   onCompleteTextOnboarding: (extractedProfile: Partial<BeneficiaryProfile>) => void;
 }
 
 const BOT_QUESTIONS = [
-  { id: 'name', question: 'What is your full name and age?', placeholder: 'e.g. Ravi Kumar, 24 years old' },
-  { id: 'education', question: 'What is your highest level of education?', placeholder: 'e.g. 10th Pass, 12th Pass, 8th Pass' },
-  { id: 'skills', question: 'What existing skills do you currently have?', placeholder: 'e.g. Tailoring, Sewing, Stitching, Machine Operation' },
-  { id: 'experience', question: 'How many years of work experience do you have, and what was your previous work?', placeholder: 'e.g. 2 years experience in local garment stitching' },
-  { id: 'location', question: 'Which State and District are you located in?', placeholder: 'e.g. Vizianagaram, Andhra Pradesh (Rural)' },
-  { id: 'goal', question: 'Are you looking for a Job, Self-Employment with PM-AJAY GIA toolkit support, or a Business?', placeholder: 'e.g. Self-employment / start home tailoring unit' }
+  { id: 'name', question: '1. What is your full name?', placeholder: 'e.g. Ravi Kumar' },
+  { id: 'state', question: '2. Which Indian State do you live in?', placeholder: 'e.g. Tamil Nadu, Karnataka, Maharashtra' },
+  { id: 'district', question: '3. Which District in your state do you reside in?', placeholder: 'e.g. Theni, Bengaluru Urban, Pune, Madurai' },
+  { id: 'education', question: '4. What is your highest level of education?', placeholder: 'e.g. 10th Pass, 12th Pass, 8th Pass, ITI, Graduate' },
+  { id: 'age', question: '5. What is your age?', placeholder: 'e.g. 24' },
+  { id: 'occupation', question: '6. What is your current work or occupation?', placeholder: 'e.g. Tailoring from home, Electrician helper, Unemployed' },
+  { id: 'experience', question: '7. How many years of work experience do you have?', placeholder: 'e.g. 2 years, 1 year, 0' },
+  { id: 'skills', question: '8. What existing vocational or technical skills do you currently have?', placeholder: 'e.g. Automobile repair, Electrical wiring, Tailoring, Food processing' },
+  { id: 'interest', question: '9. Which industry sector are you most interested in?', placeholder: 'e.g. Automotive, Electrical & Power, Food Processing, Apparel' },
+  { id: 'goal', question: '10. What is your career goal (Job, Self-employment with PM-AJAY toolkit grant, or Entrepreneurship)?', placeholder: 'e.g. Self-employment / start boutique with grant' }
 ];
 
 export default function TextOnboardingBot({ onCompleteTextOnboarding }: TextBotProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [inputVal, setInputVal] = useState('');
   const [collectedData, setCollectedData] = useState<Partial<BeneficiaryProfile>>({
-    name: 'Ravi Kumar',
-    age: 24,
+    name: undefined,
+    state: undefined,
+    district: undefined,
+    education: undefined,
+    age: undefined,
     gender: 'Male',
-    state: 'Andhra Pradesh',
-    district: 'Vizianagaram',
-    areaType: 'Rural',
-    education: '10th Pass',
-    currentOccupation: 'Unemployed',
-    existingSkills: ['Tailoring', 'Sewing', 'Stitching'],
-    workExperienceYears: 2,
-    preferredLivelihood: 'Self-employment',
-    careerGoal: 'self-employment'
+    currentOccupation: undefined,
+    workExperienceYears: undefined,
+    existingSkills: [],
+    interests: [],
+    preferredLivelihood: undefined
   });
 
   const [chatLog, setChatLog] = useState<{ sender: 'bot' | 'user'; text: string }[]>([
-    { sender: 'bot', text: 'Hello! I am SakshamAI. I will ask you a few simple questions one by one to create your profile.' },
+    { sender: 'bot', text: 'Hello! I am SakshamAI. I will ask you 10 simple questions one by one to register your PM-AJAY beneficiary profile.' },
     { sender: 'bot', text: BOT_QUESTIONS[0].question }
   ]);
 
@@ -48,26 +53,60 @@ export default function TextOnboardingBot({ onCompleteTextOnboarding }: TextBotP
 
     const newLog = [...chatLog, { sender: 'user' as const, text: userText }];
 
-    // Simple field extraction
     const updated = { ...collectedData };
     if (currentQ.id === 'name') {
-      updated.name = userText.split(',')[0] || userText;
+      updated.name = userText;
+    } else if (currentQ.id === 'state') {
+      const normState = normalizeStateName(userText);
+      if (normState && isValidState(normState)) {
+        updated.state = normState;
+      } else {
+        newLog.push({ sender: 'bot', text: `State "${userText}" is not recognized. Please type a valid Indian State (e.g. Tamil Nadu, Karnataka, Maharashtra).` });
+        setChatLog(newLog);
+        setInputVal('');
+        return;
+      }
+    } else if (currentQ.id === 'district') {
+      const userState = updated.state || 'Tamil Nadu';
+      if (isValidDistrictForState(userState, userText)) {
+        updated.district = normalizeDistrictName(userText, userState);
+      } else {
+        const sample = getDistrictsForState(userState).slice(0, 5).join(', ');
+        newLog.push({ sender: 'bot', text: `District "${userText}" does not belong to ${userState}. Please type a valid district in ${userState} (e.g., ${sample}).` });
+        setChatLog(newLog);
+        setInputVal('');
+        return;
+      }
     } else if (currentQ.id === 'education') {
       if (userText.includes('10th')) updated.education = '10th Pass';
       else if (userText.includes('12th')) updated.education = '12th Pass';
       else if (userText.includes('8th')) updated.education = '8th Pass';
-      else if (userText.includes('5th')) updated.education = 'Below 8th';
+      else if (userText.includes('5th') || userText.toLowerCase().includes('below')) updated.education = 'Below 8th';
+      else if (userText.toLowerCase().includes('grad') || userText.toLowerCase().includes('degree')) updated.education = 'Graduate & Above';
+      else if (userText.toLowerCase().includes('iti') || userText.toLowerCase().includes('diploma')) updated.education = 'ITI / Diploma';
+      else updated.education = '10th Pass';
+    } else if (currentQ.id === 'age') {
+      const parsedAge = parseInt(userText, 10);
+      updated.age = !isNaN(parsedAge) && parsedAge >= 15 ? parsedAge : 24;
+    } else if (currentQ.id === 'occupation') {
+      updated.currentOccupation = userText;
+    } else if (currentQ.id === 'experience') {
+      const parsedExp = parseInt(userText, 10);
+      updated.workExperienceYears = !isNaN(parsedExp) ? parsedExp : 0;
     } else if (currentQ.id === 'skills') {
       updated.existingSkills = userText.split(',').map(s => s.trim()).filter(Boolean);
-    } else if (currentQ.id === 'location') {
-      updated.state = userText;
+    } else if (currentQ.id === 'interest') {
+      updated.interests = [userText];
     } else if (currentQ.id === 'goal') {
-      if (userText.toLowerCase().includes('self') || userText.toLowerCase().includes('shop')) {
+      if (userText.toLowerCase().includes('self') || userText.toLowerCase().includes('shop') || userText.toLowerCase().includes('toolkit')) {
         updated.preferredLivelihood = 'Self-employment';
-        updated.careerGoal = 'self-employment';
+        updated.careerGoal = 'Establish an independent enterprise with PM-AJAY toolkit grant.';
+      } else if (userText.toLowerCase().includes('entrepreneur')) {
+        updated.preferredLivelihood = 'Entrepreneurship';
+        updated.careerGoal = 'Establish an enterprise under PM-AJAY.';
       } else {
         updated.preferredLivelihood = 'Job';
-        updated.careerGoal = 'job';
+        updated.careerGoal = 'Secure a salaried wage employment with certified NSQF credentials.';
       }
     }
 

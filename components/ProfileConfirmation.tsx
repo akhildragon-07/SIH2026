@@ -56,6 +56,13 @@ export default function ProfileConfirmation({ profile, onConfirm, onEdit }: Conf
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800">
             <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mb-1">
+              <MapPin size={15} className="text-emerald-400" /> State & District
+            </p>
+            <p className="text-base font-bold text-slate-100">{profile.district}, {profile.state}</p>
+          </div>
+
+          <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800">
+            <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mb-1">
               <GraduationCap size={15} className="text-emerald-400" /> Education Level
             </p>
             <p className="text-base font-bold text-slate-100">{profile.education}</p>
@@ -67,6 +74,15 @@ export default function ProfileConfirmation({ profile, onConfirm, onEdit }: Conf
             </p>
             <p className="text-base font-bold text-slate-100">
               {profile.currentOccupation} ({profile.workExperienceYears} yrs exp)
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800">
+            <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mb-1">
+              <Sparkles size={15} className="text-teal-400" /> Target Interest / Sector
+            </p>
+            <p className="text-base font-bold text-slate-100">
+              {profile.interests && profile.interests.length > 0 ? profile.interests.join(', ') : 'All PM-AJAY Sectors'}
             </p>
           </div>
 

@@ -1,6 +1,7 @@
 import { BeneficiaryProfile, AnalysisResponse, NSQFCourse, LivelihoodOpportunity, SkillGapAnalysisResult, CareerRoadmapStep, EducationLevel } from './types';
 import { NSQF_COURSES_DATASET } from './nsqf-data';
 import { LIVELIHOOD_OPPORTUNITIES_DATASET } from './livelihood-data';
+import { normalizeStateName, getDistrictInfo, isValidState, isValidDistrictForState } from './india-locations';
 
 const EDUCATION_WEIGHTS: Record<EducationLevel, number> = {
   'Below 8th': 1,
@@ -571,92 +572,94 @@ export function extractProfileFromText(
     extracted.currentOccupation = 'Student / Candidate';
   }
 
-  // 8. Location: District & State Extraction (Multilingual)
-  const districtMap: Record<string, { district: string; state: string }> = {
-    'theni': { district: 'Theni', state: 'Tamil Nadu' },
-    'தேனி': { district: 'Theni', state: 'Tamil Nadu' },
-    'madurai': { district: 'Madurai', state: 'Tamil Nadu' },
-    'மதுரை': { district: 'Madurai', state: 'Tamil Nadu' },
-    'chennai': { district: 'Chennai', state: 'Tamil Nadu' },
-    'சென்னை': { district: 'Chennai', state: 'Tamil Nadu' },
-    'coimbatore': { district: 'Coimbatore', state: 'Tamil Nadu' },
-    'கோயம்புத்தூர்': { district: 'Coimbatore', state: 'Tamil Nadu' },
-    'கோவை': { district: 'Coimbatore', state: 'Tamil Nadu' },
-    'salem': { district: 'Salem', state: 'Tamil Nadu' },
-    'சேலம்': { district: 'Salem', state: 'Tamil Nadu' },
-    'dindigul': { district: 'Dindigul', state: 'Tamil Nadu' },
-    'திண்டுக்கல்': { district: 'Dindigul', state: 'Tamil Nadu' },
-    'tiruppur': { district: 'Tiruppur', state: 'Tamil Nadu' },
-    'திருப்பூர்': { district: 'Tiruppur', state: 'Tamil Nadu' },
-    'trichy': { district: 'Tiruchirappalli', state: 'Tamil Nadu' },
-    'திருச்சி': { district: 'Tiruchirappalli', state: 'Tamil Nadu' },
-
-    'vizianagaram': { district: 'Vizianagaram', state: 'Andhra Pradesh' },
-    'విజయనగరం': { district: 'Vizianagaram', state: 'Andhra Pradesh' },
-    'visakhapatnam': { district: 'Visakhapatnam', state: 'Andhra Pradesh' },
-    'విశాఖపట్నం': { district: 'Visakhapatnam', state: 'Andhra Pradesh' },
-    'vizag': { district: 'Visakhapatnam', state: 'Andhra Pradesh' },
-    'guntur': { district: 'Guntur', state: 'Andhra Pradesh' },
-    'గుంటూరు': { district: 'Guntur', state: 'Andhra Pradesh' },
-    'vijayawada': { district: 'Krishna', state: 'Andhra Pradesh' },
-    'విజయవాడ': { district: 'Krishna', state: 'Andhra Pradesh' },
-    'hyderabad': { district: 'Hyderabad', state: 'Telangana' },
-    'హైదరాబాద్': { district: 'Hyderabad', state: 'Telangana' },
-
-    'mysuru': { district: 'Mysuru', state: 'Karnataka' },
-    'mysore': { district: 'Mysuru', state: 'Karnataka' },
-    'ಮೈಸೂರು': { district: 'Mysuru', state: 'Karnataka' },
-    'bengaluru': { district: 'Bengaluru', state: 'Karnataka' },
-    'bangalore': { district: 'Bengaluru', state: 'Karnataka' },
-    'ಬೆಂಗಳೂರು': { district: 'Bengaluru', state: 'Karnataka' },
-
-    'ernakulam': { district: 'Ernakulam', state: 'Kerala' },
-    'എറണാകുളം': { district: 'Ernakulam', state: 'Kerala' },
-    'kochi': { district: 'Ernakulam', state: 'Kerala' },
-    'കൊച്ചി': { district: 'Ernakulam', state: 'Kerala' },
-    'thiruvananthapuram': { district: 'Thiruvananthapuram', state: 'Kerala' },
-    'തിരുവനന്തപുരം': { district: 'Thiruvananthapuram', state: 'Kerala' },
-
-    'varanasi': { district: 'Varanasi', state: 'Uttar Pradesh' },
-    'वाराणसी': { district: 'Varanasi', state: 'Uttar Pradesh' },
-    'banaras': { district: 'Varanasi', state: 'Uttar Pradesh' },
-    'kashi': { district: 'Varanasi', state: 'Uttar Pradesh' },
-    'sitapur': { district: 'Sitapur', state: 'Uttar Pradesh' },
-    'सीतापुर': { district: 'Sitapur', state: 'Uttar Pradesh' },
-    'lucknow': { district: 'Lucknow', state: 'Uttar Pradesh' },
-    'लखनऊ': { district: 'Lucknow', state: 'Uttar Pradesh' },
-
-    'gaya': { district: 'Gaya', state: 'Bihar' },
-    'गया': { district: 'Gaya', state: 'Bihar' },
-    'patna': { district: 'Patna', state: 'Bihar' },
-    'पटना': { district: 'Patna', state: 'Bihar' },
-
-    'solapur': { district: 'Solapur', state: 'Maharashtra' },
-    'सोलापूर': { district: 'Solapur', state: 'Maharashtra' },
-    'pune': { district: 'Pune', state: 'Maharashtra' },
-    'पुणे': { district: 'Pune', state: 'Maharashtra' },
-    'mumbai': { district: 'Mumbai', state: 'Maharashtra' },
-    'मुंबई': { district: 'Mumbai', state: 'Maharashtra' }
-  };
-
-  for (const [key, loc] of Object.entries(districtMap)) {
-    if (text.includes(key)) {
-      extracted.district = loc.district;
-      extracted.state = loc.state;
-      break;
+  // 8. Location: State and District Extraction (Full Indian Normalization)
+  const distInfo = getDistrictInfo(text, existingProfile.state);
+  if (distInfo) {
+    extracted.district = distInfo.district;
+    if (!extracted.state) {
+      extracted.state = distInfo.state;
     }
   }
 
-  // Standalone location fallback if user simply says district name
-  if (!extracted.district) {
-    const singleLocMatch = transcript.match(/^([a-zA-Z\u0900-\u097F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]{3,20})$/);
-    if (singleLocMatch && !stopWords.includes(singleLocMatch[1].toLowerCase())) {
-      const locName = singleLocMatch[1].trim();
-      extracted.district = locName.charAt(0).toUpperCase() + locName.slice(1);
+  // Check state explicitly
+  const stateFound = normalizeStateName(text);
+  if (stateFound && isValidState(stateFound)) {
+    extracted.state = stateFound;
+  }
+
+  // Check if standalone words contain recognized state or district
+  if (!extracted.state || !extracted.district) {
+    const words = text.split(/[\s,]+/);
+    for (const w of words) {
+      if (!extracted.state) {
+        const st = normalizeStateName(w);
+        if (st && isValidState(st)) {
+          extracted.state = st;
+        }
+      }
+      if (!extracted.district) {
+        const dInfo = getDistrictInfo(w, extracted.state || existingProfile.state);
+        if (dInfo) {
+          extracted.district = dInfo.district;
+          if (!extracted.state) extracted.state = dInfo.state;
+        }
+      }
     }
   }
 
-  // 9. Livelihood Goal
+  // 9. Interest Extraction
+  if (
+    text.includes('auto') || text.includes('vehicle') || text.includes('bike') || text.includes('motor') ||
+    text.includes('automobile') || text.includes('ஆட்டோமொபைல்') || text.includes('ఆటోమొబైల్') || text.includes('ऑटोमोबाइल')
+  ) {
+    extracted.interest = 'Automotive';
+    if (!extracted.interests) extracted.interests = [];
+    if (!extracted.interests.includes('Automotive')) extracted.interests.push('Automotive');
+  } else if (
+    text.includes('electric') || text.includes('wiring') || text.includes('solar') || text.includes('power') ||
+    text.includes('எலக்ட்ரிக்கல்') || text.includes('ఎలక్ట్రికల్') || text.includes('इलेक्ट्रिकल')
+  ) {
+    extracted.interest = 'Electrical & Power';
+    if (!extracted.interests) extracted.interests = [];
+    if (!extracted.interests.includes('Electrical & Power')) extracted.interests.push('Electrical & Power');
+  } else if (
+    text.includes('food') || text.includes('processing') || text.includes('bakery') || text.includes('dairy') ||
+    text.includes('உணவு பதப்படுத்துதல்') || text.includes('ఫుడ్ ప్రాసెసింగ్') || text.includes('खाद्य प्रसंस्करण')
+  ) {
+    extracted.interest = 'Food Processing';
+    if (!extracted.interests) extracted.interests = [];
+    if (!extracted.interests.includes('Food Processing')) extracted.interests.push('Food Processing');
+  } else if (
+    text.includes('tailor') || text.includes('sewing') || text.includes('apparel') || text.includes('garment') ||
+    text.includes('தையல்') || text.includes('టైలరింగ్') || text.includes('सिलाई')
+  ) {
+    extracted.interest = 'Apparel & Tailoring';
+    if (!extracted.interests) extracted.interests = [];
+    if (!extracted.interests.includes('Apparel & Tailoring')) extracted.interests.push('Apparel & Tailoring');
+  } else if (
+    text.includes('farm') || text.includes('agriculture') || text.includes('poultry') ||
+    text.includes('விவசாயம்') || text.includes('వ్యవసాయం') || text.includes('खेती')
+  ) {
+    extracted.interest = 'Agriculture & Farming';
+    if (!extracted.interests) extracted.interests = [];
+    if (!extracted.interests.includes('Agriculture & Farming')) extracted.interests.push('Agriculture & Farming');
+  } else if (
+    text.includes('computer') || text.includes('it') || text.includes('data entry') || text.includes('software') ||
+    text.includes('கணினி') || text.includes('కంప్యూటర్') || text.includes('कंप्यूटर')
+  ) {
+    extracted.interest = 'IT & Digital Services';
+    if (!extracted.interests) extracted.interests = [];
+    if (!extracted.interests.includes('IT & Digital Services')) extracted.interests.push('IT & Digital Services');
+  } else if (
+    text.includes('beauty') || text.includes('wellness') || text.includes('salon') || text.includes('parlour') ||
+    text.includes('அழகு கலை') || text.includes('బ్యూటీ') || text.includes('ब्यूटी')
+  ) {
+    extracted.interest = 'Beauty & Wellness';
+    if (!extracted.interests) extracted.interests = [];
+    if (!extracted.interests.includes('Beauty & Wellness')) extracted.interests.push('Beauty & Wellness');
+  }
+
+  // 10. Livelihood Goal
   if (
     text.includes('self') || text.includes('self-employment') || text.includes('business') || text.includes('own shop') || text.includes('toolkit') || text.includes('grant') ||
     text.includes('சுயதொழில்') || text.includes('சொந்த தொழில்') || text.includes('டூல்கிட்') || text.includes('மானியம்') ||
@@ -673,15 +676,166 @@ export function extractProfileFromText(
     text.includes('வேலை') || text.includes('சம்பள வேலை') ||
     text.includes('ఉద్యోగం') || text.includes('నౌకరీ') ||
     text.includes('ಉದ್ಯೋಗ') || text.includes('ಕೆಲಸ') ||
-    text.includes('ജോലി') ||
-    text.includes('नौकरी') || text.includes('जॉब') ||
-    text.includes('नोकरी')
+    text.includes('नौकरी') || text.includes('जॉब') || text.includes('नोकरी')
   ) {
     extracted.preferredLivelihood = 'Job';
     extracted.careerGoal = 'Secure a salaried job with certified NSQF credentials.';
   }
 
   return extracted;
+}
+
+export interface LanguageInstructionConfig {
+  preferredLanguage: string; // e.g. 'ta-IN', 'te-IN', 'hi-IN', 'en-IN'
+  languageName: 'Tamil' | 'Telugu' | 'Hindi' | 'Kannada' | 'Malayalam' | 'Marathi' | 'English';
+  nativeName: string;
+  systemInstruction: string;
+}
+
+/**
+ * Returns explicit LLM system instructions requiring native language generation
+ */
+export function getLanguageInstruction(languageInput?: string): LanguageInstructionConfig {
+  const l = (languageInput || '').toLowerCase().trim();
+
+  if (l.includes('tamil') || l.includes('தமிழ்') || l.startsWith('ta')) {
+    return {
+      preferredLanguage: 'ta-IN',
+      languageName: 'Tamil',
+      nativeName: 'தமிழ்',
+      systemInstruction: `You are SakshamAI, a multilingual PM-AJAY livelihood assistant.
+
+The user's preferred language is Tamil.
+
+You MUST generate every user-facing response entirely in natural Tamil.
+
+Do not answer in English.
+Do not translate an English response into Tamil.
+Think and respond naturally in Tamil.
+
+Use simple spoken Tamil suitable for a low-literacy beneficiary.
+
+Ask exactly ONE question at a time.`
+    };
+  }
+
+  if (l.includes('telugu') || l.includes('తెలుగు') || l.startsWith('te')) {
+    return {
+      preferredLanguage: 'te-IN',
+      languageName: 'Telugu',
+      nativeName: 'తెలుగు',
+      systemInstruction: `You are SakshamAI, a multilingual PM-AJAY livelihood assistant.
+
+The user's preferred language is Telugu.
+
+You MUST generate every user-facing response entirely in natural Telugu.
+
+Do not answer in English.
+Do not translate an English response into Telugu.
+Think and respond naturally in Telugu.
+
+Use simple spoken Telugu suitable for a low-literacy beneficiary.
+
+Ask exactly ONE question at a time.`
+    };
+  }
+
+  if (l.includes('hindi') || l.includes('हिंदी') || l.startsWith('hi')) {
+    return {
+      preferredLanguage: 'hi-IN',
+      languageName: 'Hindi',
+      nativeName: 'हिंदी',
+      systemInstruction: `You are SakshamAI, a multilingual PM-AJAY livelihood assistant.
+
+The user's preferred language is Hindi.
+
+You MUST generate every user-facing response entirely in natural Hindi.
+
+Do not answer in English.
+Do not translate an English response into Hindi.
+Think and respond naturally in Hindi.
+
+Use simple spoken Hindi suitable for a low-literacy beneficiary.
+
+Ask exactly ONE question at a time.`
+    };
+  }
+
+  if (l.includes('kannada') || l.includes('ಕನ್ನಡ') || l.startsWith('kn')) {
+    return {
+      preferredLanguage: 'kn-IN',
+      languageName: 'Kannada',
+      nativeName: 'ಕನ್ನಡ',
+      systemInstruction: `You are SakshamAI, a multilingual PM-AJAY livelihood assistant.
+
+The user's preferred language is Kannada.
+
+You MUST generate every user-facing response entirely in natural Kannada.
+
+Do not answer in English.
+Do not translate an English response into Kannada.
+Think and respond naturally in Kannada.
+
+Use simple spoken Kannada suitable for a low-literacy beneficiary.
+
+Ask exactly ONE question at a time.`
+    };
+  }
+
+  if (l.includes('malayalam') || l.includes('മലയാളം') || l.startsWith('ml')) {
+    return {
+      preferredLanguage: 'ml-IN',
+      languageName: 'Malayalam',
+      nativeName: 'മലയാളം',
+      systemInstruction: `You are SakshamAI, a multilingual PM-AJAY livelihood assistant.
+
+The user's preferred language is Malayalam.
+
+You MUST generate every user-facing response entirely in natural Malayalam.
+
+Do not answer in English.
+Do not translate an English response into Malayalam.
+Think and respond naturally in Malayalam.
+
+Use simple spoken Malayalam suitable for a low-literacy beneficiary.
+
+Ask exactly ONE question at a time.`
+    };
+  }
+
+  if (l.includes('marathi') || l.includes('मराठी') || l.startsWith('mr')) {
+    return {
+      preferredLanguage: 'mr-IN',
+      languageName: 'Marathi',
+      nativeName: 'मराठी',
+      systemInstruction: `You are SakshamAI, a multilingual PM-AJAY livelihood assistant.
+
+The user's preferred language is Marathi.
+
+You MUST generate every user-facing response entirely in natural Marathi.
+
+Do not answer in English.
+Do not translate an English response into Marathi.
+Think and respond naturally in Marathi.
+
+Use simple spoken Marathi suitable for a low-literacy beneficiary.
+
+Ask exactly ONE question at a time.`
+    };
+  }
+
+  return {
+    preferredLanguage: 'en-IN',
+    languageName: 'English',
+    nativeName: 'English',
+    systemInstruction: `You are SakshamAI, a multilingual PM-AJAY livelihood assistant.
+
+The user's preferred language is English.
+
+Generate every user-facing response in clear, friendly English suitable for a low-literacy beneficiary.
+
+Ask exactly ONE question at a time.`
+  };
 }
 
 /**

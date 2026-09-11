@@ -254,15 +254,19 @@ export default function OpportunityMap({
       filteredOpportunities.forEach((opp) => {
         let pinColor = '#3b82f6'; // blue (training)
         let pinEmoji = '🎓';
+        let categoryLabel = 'Training';
         if (opp.type === 'job') {
           pinColor = '#10b981'; // green (job)
           pinEmoji = '💼';
+          categoryLabel = 'Job';
         } else if (opp.type === 'apprenticeship') {
-          pinColor = '#f59e0b'; // amber (apprenticeship)
+          pinColor = '#f59e0b'; // amber (skill development / apprenticeship)
           pinEmoji = '⚡';
+          categoryLabel = 'Skill Development Centre';
         } else if (opp.type === 'livelihood') {
-          pinColor = '#a855f7'; // purple (livelihood)
+          pinColor = '#a855f7'; // purple (self-employment / livelihood)
           pinEmoji = '✨';
+          categoryLabel = 'Self-employment';
         }
 
         const isSelected = selectedOpportunityId === opp.id;
@@ -292,24 +296,60 @@ export default function OpportunityMap({
           if (onSelectOpportunity) onSelectOpportunity(opp);
         });
 
+        const salaryDisplay = opp.salary_or_stipend || (opp.estimatedMonthlyIncome ? `₹${opp.estimatedMonthlyIncome.toLocaleString()} / mo` : '₹15,000–₹25,000 / mo');
+        const roleDisplay = opp.jobRole || opp.title || opp.name;
+        const orgDisplay = opp.organization || opp.provider || 'PM-AJAY Partner Enterprise';
+        const sectorDisplay = opp.sector || 'Skilling';
+        const openingsDisplay = opp.openings ? `${opp.openings} Openings` : 'Active Opportunities';
+        const nsqfDisplay = `NSQF Level ${opp.nsqfLevel || opp.nsqf_level || 3}`;
+        const eduDisplay = `Min: ${opp.educationRequired || opp.min_education || '8th Pass'}`;
+        const trainingDisplay = opp.training_available ? '✓ Skill Training Provided' : 'Direct Placement / Support';
+
         marker.bindPopup(`
-          <div style="font-family: sans-serif; min-width: 200px; padding: 4px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <span style="background: rgba(16, 185, 129, 0.15); color: #059669; font-weight: bold; font-size: 10px; padding: 2px 6px; border-radius: 9999px;">
+          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 240px; padding: 6px; color: #0f172a;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="background: rgba(16, 185, 129, 0.15); color: #047857; font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 9999px;">
                 ${opp.matchScore}% Match
               </span>
-              <span style="font-size: 11px; font-weight: bold; color: #b45309;">
+              <span style="font-size: 11px; font-weight: 700; color: #b45309;">
                 📍 ${opp.calculatedDistanceKm} km
               </span>
             </div>
-            <div style="font-weight: bold; color: #0f172a; font-size: 12px; margin-bottom: 2px;">
-              ${opp.name}
+            <div style="font-weight: 700; color: #0f172a; font-size: 14px; margin-bottom: 2px; line-height: 1.2;">
+              ${roleDisplay}
             </div>
-            <div style="font-size: 11px; color: #475569; margin-bottom: 6px;">
-              ${opp.provider || opp.city}
+            <div style="font-size: 12px; color: #475569; margin-bottom: 6px; font-weight: 500;">
+              ${orgDisplay} · <span style="color: #64748b;">${opp.district}, ${opp.state}</span>
             </div>
-            <div style="font-size: 10px; color: #059669; font-weight: bold;">
-              ${opp.estimatedMonthlyIncome ? `₹${opp.estimatedMonthlyIncome.toLocaleString()} / mo` : 'Certified PM-AJAY Pathway'}
+            <div style="background: #f8fafc; border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span style="color: #64748b;">Sector:</span>
+                <strong style="color: #334155;">${sectorDisplay}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span style="color: #64748b;">Salary / Income:</span>
+                <strong style="color: #047857;">${salaryDisplay}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span style="color: #64748b;">Vacancies:</span>
+                <strong style="color: #334155;">${openingsDisplay}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span style="color: #64748b;">Qualification:</span>
+                <strong style="color: #334155;">${nsqfDisplay} (${eduDisplay})</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #64748b;">Training:</span>
+                <strong style="color: #0284c7;">${trainingDisplay}</strong>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
+              <span style="font-size: 9px; color: #94a3b8; font-style: italic;">
+                Approximate district location
+              </span>
+              <span style="font-size: 11px; font-weight: 700; color: #059669; text-decoration: underline; cursor: pointer;">
+                View Details →
+              </span>
             </div>
           </div>
         `);
@@ -402,17 +442,42 @@ export default function OpportunityMap({
           </div>
         </div>
 
-        {/* Change District & Radius Shortcuts */}
+        {/* Change District & Radius Shortcuts and Quick Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const myDist = profile.district || 'Theni';
+              setSelectedDistrict(myDist);
+              if (profile.state) setSelectedState(profile.state);
+              setFilters({ ...filters, onlyMyDistrict: true, district: myDist });
+            }}
+            className="px-3 py-1.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+          >
+            <MapPin size={13} />
+            <span>Show opportunities in my district</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setFilters({ ...filters, onlyMyDistrict: false, radiusKm: 25 });
+            }}
+            className="px-3 py-1.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-800 text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <Compass size={13} />
+            <span>Show nearby opportunities</span>
+          </button>
+
           <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
             <span className="text-[11px] font-bold text-slate-400 px-2">Radius:</span>
-            {[5, 10, 25, 50].map((r) => (
+            {[5, 10, 25, 50, 100].map((r) => (
               <button
                 key={r}
                 type="button"
-                onClick={() => setFilters({ ...filters, radiusKm: r })}
+                onClick={() => setFilters({ ...filters, radiusKm: r, onlyMyDistrict: false })}
                 className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
-                  filters.radiusKm === r
+                  filters.radiusKm === r && !filters.onlyMyDistrict
                     ? 'bg-emerald-500 text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 }`}
@@ -440,15 +505,31 @@ export default function OpportunityMap({
             <option value="Vijayawada">Vijayawada (AP)</option>
             <option value="Guntur">Guntur (AP)</option>
             <option value="Tirupati">Tirupati (AP)</option>
-            <option value="Bengaluru">Bengaluru (KA)</option>
+            <option value="Bengaluru Urban">Bengaluru Urban (KA)</option>
             <option value="Mysuru">Mysuru (KA)</option>
+            <option value="Pune">Pune (MH)</option>
+            <option value="Solapur">Solapur (MH)</option>
             <option value="Kochi">Kochi (KL)</option>
             <option value="Thiruvananthapuram">Thiruvananthapuram (KL)</option>
             <option value="Sitapur">Sitapur (UP)</option>
             <option value="Gaya">Gaya (Bihar)</option>
-            <option value="Solapur">Solapur (MH)</option>
+            <option value="Patna">Patna (Bihar)</option>
+            <option value="Jaipur">Jaipur (Rajasthan)</option>
           </select>
         </div>
+      </div>
+
+      {/* Demo Notice Banner */}
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-300 flex items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+          <span>
+            <strong>Demo opportunity data:</strong> This information is for demonstration purposes and does not represent confirmed vacancies.
+          </span>
+        </div>
+        <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-200 border border-amber-500/30">
+          Approximate district location
+        </span>
       </div>
 
       {/* Main 3-Column / Responsive 2-Pane Work Area */}
@@ -459,6 +540,8 @@ export default function OpportunityMap({
             filters={filters}
             onChangeFilters={setFilters}
             totalResultsCount={filteredOpportunities.length}
+            userDistrict={profile.district}
+            userState={profile.state}
           />
 
           {/* Category Legend Card */}
@@ -478,11 +561,11 @@ export default function OpportunityMap({
               </div>
               <div className="flex items-center gap-2 text-slate-300">
                 <span className="size-3 rounded-full bg-amber-500" />
-                <span>🟠 Apprenticeship</span>
+                <span>🟠 Skill Development Centre</span>
               </div>
               <div className="flex items-center gap-2 text-slate-300">
                 <span className="size-3 rounded-full bg-purple-500" />
-                <span>🟣 Livelihood Unit</span>
+                <span>🟣 Self-employment</span>
               </div>
             </div>
           </div>
@@ -497,6 +580,9 @@ export default function OpportunityMap({
                 <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="font-bold text-slate-200">
                   Interactive Spatial Map ({selectedDistrict} Centroid: {beneficiaryCoords.latitude}, {beneficiaryCoords.longitude})
+                </span>
+                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300 border border-slate-700">
+                  Approximate district location
                 </span>
               </div>
               <span className="text-[11px] text-slate-400">
@@ -521,7 +607,7 @@ export default function OpportunityMap({
                   <span>Top Opportunities Near You</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Ranked by 5-factor scoring (Skill 35% · Proximity 25% · Goal 15% · Eligibility 15% · NSQF 10%)
+                  Ranked by 6-factor scoring (Job/Skill 40% · Education/NSQF 20% · Experience 15% · Interest 10% · District Match 10% · Distance 5%)
                 </p>
               </div>
 
